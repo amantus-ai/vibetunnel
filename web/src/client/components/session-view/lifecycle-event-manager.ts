@@ -306,11 +306,19 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Mobile's hidden software-keyboard input owns its events. Route only hardware
     // keyboard events that originate outside editable or interactive controls.
     for (const target of e.composedPath()) {
+      const isTerminalKeyboardTarget =
+        target instanceof HTMLElement &&
+        (target.matches('textarea.terminal-paste-input') ||
+          (target.closest('vibe-terminal') !== null &&
+            target.matches(
+              'textarea, [contenteditable]:not([contenteditable="false"]), .terminal-container, vibe-terminal'
+            )));
       if (
         target instanceof HTMLElement &&
-        (target.matches(
-          'input, textarea, select, button, a[href], [role="button"], [role="link"], [contenteditable]:not([contenteditable="false"]), inline-edit'
-        ) ||
+        ((!isTerminalKeyboardTarget &&
+          target.matches(
+            'input, textarea, select, button, a[href], [role="button"], [role="link"], [contenteditable]:not([contenteditable="false"]), inline-edit'
+          )) ||
           target.closest?.('.monaco-editor, [data-keybinding-context], .editor-container'))
       ) {
         return;

@@ -615,8 +615,8 @@ export class InputManager {
       target.closest?.('.editor-container') ||
       target.closest?.('inline-edit') // Allow typing in inline-edit component
     ) {
-      // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
-      if (isCopyPasteShortcut(e)) {
+      // Preserve native shortcuts in editable controls, including the terminal paste target.
+      if (isCopyPasteShortcut(e) || isBrowserShortcut(e)) {
         return true;
       }
       // Allow normal input in form fields and editors for other keys

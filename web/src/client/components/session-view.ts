@@ -842,14 +842,10 @@ export class SessionView extends LitElement {
     this.mobileHardwareFocusTimeout = setTimeout(() => {
       this.mobileHardwareFocusTimeout = null;
       const activeElement = document.activeElement;
-      const terminalOwnsFocus =
-        activeElement instanceof HTMLElement && activeElement.closest('vibe-terminal') !== null;
       if (
         this.isConnected &&
         !this.disableFocusManagement &&
-        (activeElement === document.body ||
-          activeElement === document.documentElement ||
-          terminalOwnsFocus)
+        (activeElement === document.body || activeElement === document.documentElement)
       ) {
         this.focus();
       }

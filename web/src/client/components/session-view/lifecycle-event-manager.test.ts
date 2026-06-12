@@ -201,6 +201,102 @@ describe('LifecycleEventManager', () => {
       expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
     });
 
+    it('routes hardware keys from the terminal paste input', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(false),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+      const pasteInput = document.createElement('textarea');
+      pasteInput.className = 'terminal-paste-input';
+      document.body.appendChild(pasteInput);
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      try {
+        pasteInput.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        pasteInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      } finally {
+        pasteInput.remove();
+      }
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledTimes(1);
+      expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes hardware keys from the contenteditable terminal surface', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(false),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+      const terminal = document.createElement('vibe-terminal');
+      const terminalSurface = document.createElement('div');
+      terminalSurface.className = 'terminal-container';
+      terminalSurface.contentEditable = 'true';
+      terminal.appendChild(terminalSurface);
+      document.body.appendChild(terminal);
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      try {
+        terminalSurface.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        terminalSurface.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'a', bubbles: true, composed: true })
+        );
+      } finally {
+        terminal.remove();
+      }
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledTimes(1);
+      expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes hardware keys from the terminal renderer textarea', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(false),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+      const terminal = document.createElement('vibe-terminal');
+      const terminalInput = document.createElement('textarea');
+      terminalInput.setAttribute('aria-label', 'Terminal input');
+      terminal.appendChild(terminalInput);
+      document.body.appendChild(terminal);
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      try {
+        terminalInput.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        terminalInput.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'a', bubbles: true, composed: true })
+        );
+      } finally {
+        terminal.remove();
+      }
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledTimes(1);
+      expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledTimes(1);
+    });
+
     it('leaves mobile keyboard events from Shadow DOM editors untouched', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),

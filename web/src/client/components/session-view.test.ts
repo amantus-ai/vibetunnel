@@ -238,18 +238,22 @@ describe('SessionView', () => {
         await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
 
         const terminalContainer = terminal?.querySelector('#terminal-container') as HTMLElement;
-        terminalContainer.focus();
+        const pasteInput = terminal?.querySelector('.terminal-paste-input') as HTMLTextAreaElement;
+        pasteInput.focus();
         terminalContainer.dispatchEvent(
-          new TouchEvent('touchend', {
-            bubbles: true,
-            composed: true,
-            cancelable: true,
-            touches: [],
-            targetTouches: [],
-            changedTouches: [{ clientX: 10, clientY: 10 }] as unknown as Touch[],
-          })
+          new MouseEvent('click', { bubbles: true, cancelable: true })
         );
-        await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
+        await vi.waitFor(() => expect(document.activeElement).toBe(pasteInput));
+
+        pasteInput.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'x', bubbles: true, composed: true })
+        );
+        await vi.waitFor(() =>
+          expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+            'mobile-hardware-keyboard-session',
+            'x'
+          )
+        );
       } finally {
         mobileElement?.remove();
         Object.defineProperty(navigator, 'maxTouchPoints', {

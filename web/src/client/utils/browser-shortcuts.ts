@@ -3,9 +3,20 @@
  * Centralized logic for detecting browser keyboard shortcuts
  */
 
-// Platform detection helper
-function isMacOS(): boolean {
-  return navigator.platform.toLowerCase().includes('mac');
+// Apple mobile hardware keyboards use Command even when navigator.platform is iPhone/iPad.
+function isApplePlatform(): boolean {
+  const platform = navigator.platform.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase();
+  return platform.includes('mac') || /iphone|ipad|ipod/.test(`${platform} ${userAgent}`);
+}
+
+function isAppleMobilePlatform(): boolean {
+  const platform = navigator.platform.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase();
+  return (
+    /iphone|ipad|ipod/.test(`${platform} ${userAgent}`) ||
+    (platform === 'macintel' && navigator.maxTouchPoints > 1)
+  );
 }
 
 // Constants for magic patterns
@@ -50,14 +61,19 @@ export function isBrowserShortcut(event: KeyboardShortcutEvent): boolean {
   const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
   const keyLower = key.toLowerCase();
 
+  // iOS/iPadOS reserves Command chords for browser and system actions.
+  if (isAppleMobilePlatform() && metaKey && !ctrlKey) {
+    return true;
+  }
+
   // Platform-specific primary modifier
-  const primaryModifier = isMacOS() ? metaKey : ctrlKey;
-  const wrongModifier = isMacOS() ? ctrlKey : metaKey;
+  const primaryModifier = isApplePlatform() ? metaKey : ctrlKey;
+  const wrongModifier = isApplePlatform() ? ctrlKey : metaKey;
 
   // Early return if wrong modifier for platform
   if (wrongModifier || !primaryModifier) {
     // Special case: Alt+F4 on Windows
-    if (!isMacOS() && altKey && !ctrlKey && !metaKey && !shiftKey && keyLower === 'f4') {
+    if (!isApplePlatform() && altKey && !ctrlKey && !metaKey && !shiftKey && keyLower === 'f4') {
       return true;
     }
     return false;
@@ -65,8 +81,10 @@ export function isBrowserShortcut(event: KeyboardShortcutEvent): boolean {
 
   // Check modifier combinations
   const modifierKey = shiftKey ? 'withShift' : altKey ? 'withAlt' : 'noModifiers';
-  const platform = isMacOS() ? 'mac' : 'other';
-  const shortcuts = isMacOS() ? CRITICAL_SHORTCUTS.mac.withCmd : CRITICAL_SHORTCUTS.other.withCtrl;
+  const platform = isApplePlatform() ? 'mac' : 'other';
+  const shortcuts = isApplePlatform()
+    ? CRITICAL_SHORTCUTS.mac.withCmd
+    : CRITICAL_SHORTCUTS.other.withCtrl;
 
   // Check critical shortcuts
   if (shortcuts[modifierKey]?.includes(keyLower)) {
@@ -95,7 +113,7 @@ export function isCopyPasteShortcut(event: KeyboardShortcutEvent): boolean {
   const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
   const keyLower = key.toLowerCase();
 
-  if (isMacOS()) {
+  if (isApplePlatform()) {
     return (
       metaKey && !ctrlKey && !altKey && !shiftKey && COPY_PASTE_SHORTCUTS.mac.includes(keyLower)
     );
@@ -110,7 +128,7 @@ export function isCopyPasteShortcut(event: KeyboardShortcutEvent): boolean {
  * Gets the platform name for display
  */
 export function getPlatformName(): 'mac' | 'windows' | 'linux' {
-  if (isMacOS()) return 'mac';
+  if (isApplePlatform()) return 'mac';
   if (navigator.platform.toLowerCase().includes('win')) return 'windows';
   return 'linux';
 }
@@ -119,5 +137,5 @@ export function getPlatformName(): 'mac' | 'windows' | 'linux' {
  * Formats a keyboard shortcut for display based on the current platform
  */
 export function formatShortcut(mac: string, other: string): string {
-  return isMacOS() ? mac : other;
+  return isApplePlatform() ? mac : other;
 }
