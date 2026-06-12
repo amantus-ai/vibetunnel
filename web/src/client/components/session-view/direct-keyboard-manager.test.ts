@@ -7,7 +7,7 @@ import type { InputManager } from './input-manager';
 
 describe('DirectKeyboardManager', () => {
   let manager: DirectKeyboardManager;
-  let mockInputManager: Pick<InputManager, 'sendInputText'>;
+  let mockInputManager: Pick<InputManager, 'sendInput' | 'sendInputText'>;
   let originalRequestAnimationFrame: typeof requestAnimationFrame;
 
   const getManagerState = () =>
@@ -28,7 +28,7 @@ describe('DirectKeyboardManager', () => {
     });
 
     manager = new DirectKeyboardManager('test');
-    mockInputManager = { sendInputText: vi.fn() };
+    mockInputManager = { sendInput: vi.fn(), sendInputText: vi.fn() };
     manager.setInputManager(mockInputManager as InputManager);
 
     // Mock clipboard API using Object.defineProperty
@@ -130,5 +130,28 @@ describe('DirectKeyboardManager', () => {
     hiddenInput.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
 
     expect(mockInputManager.sendInputText).toHaveBeenCalledWith(expected);
+  });
+
+  it('sends Escape without bubbling to app navigation', () => {
+    const hiddenInput = getManagerState().hiddenInput;
+    expect(hiddenInput).toBeTruthy();
+
+    const documentKeydown = vi.fn();
+    document.addEventListener('keydown', documentKeydown);
+
+    try {
+      const escapeEvent = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      hiddenInput?.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(mockInputManager.sendInput).toHaveBeenCalledWith('escape');
+      expect(documentKeydown).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener('keydown', documentKeydown);
+    }
   });
 });

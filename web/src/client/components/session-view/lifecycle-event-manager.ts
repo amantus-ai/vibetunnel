@@ -37,6 +37,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
   // Event listener tracking
   private keyboardListenerAdded = false;
+  private mobileEscapeListenerAdded = false;
   private touchListenersAdded = false;
   private visualViewportHandler: (() => void) | null = null;
   private viewportTrackingHandler: (() => void) | null = null;
@@ -301,6 +302,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     this.callbacks.handleKeyboardInput(e);
   };
 
+  mobileHardwareKeyboardHandler = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') {
+      this.keyboardHandler(e);
+    }
+  };
+
   touchStartHandler = (e: TouchEvent): void => {
     if (!this.callbacks) return;
 
@@ -527,11 +534,17 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       // Don't use capture phase - let browser handle shortcuts naturally
       document.addEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = true;
-    } else if (isMobile && !this.touchListenersAdded) {
-      // Add touch event listeners for mobile swipe gestures
-      document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-      document.addEventListener('touchend', this.touchEndHandler, { passive: true });
-      this.touchListenersAdded = true;
+    } else if (isMobile) {
+      if (!this.mobileEscapeListenerAdded) {
+        document.addEventListener('keydown', this.mobileHardwareKeyboardHandler);
+        this.mobileEscapeListenerAdded = true;
+      }
+      if (!this.touchListenersAdded) {
+        // Add touch event listeners for mobile swipe gestures
+        document.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+        document.addEventListener('touchend', this.touchEndHandler, { passive: true });
+        this.touchListenersAdded = true;
+      }
     }
   }
 
@@ -573,10 +586,15 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     }
 
     // Remove global keyboard event listener
-    if (!this.callbacks.getIsMobile() && this.keyboardListenerAdded) {
+    if (this.keyboardListenerAdded) {
       document.removeEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = false;
-    } else if (this.callbacks.getIsMobile() && this.touchListenersAdded) {
+    }
+    if (this.mobileEscapeListenerAdded) {
+      document.removeEventListener('keydown', this.mobileHardwareKeyboardHandler);
+      this.mobileEscapeListenerAdded = false;
+    }
+    if (this.touchListenersAdded) {
       // Remove touch event listeners
       document.removeEventListener('touchstart', this.touchStartHandler);
       document.removeEventListener('touchend', this.touchEndHandler);
@@ -627,10 +645,15 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     window.removeEventListener('resize', this.handleWindowResize);
 
     // Remove global keyboard event listener
-    if (!this.callbacks?.getIsMobile() && this.keyboardListenerAdded) {
+    if (this.keyboardListenerAdded) {
       document.removeEventListener('keydown', this.keyboardHandler);
       this.keyboardListenerAdded = false;
-    } else if (this.callbacks?.getIsMobile() && this.touchListenersAdded) {
+    }
+    if (this.mobileEscapeListenerAdded) {
+      document.removeEventListener('keydown', this.mobileHardwareKeyboardHandler);
+      this.mobileEscapeListenerAdded = false;
+    }
+    if (this.touchListenersAdded) {
       // Remove touch event listeners
       document.removeEventListener('touchstart', this.touchStartHandler);
       document.removeEventListener('touchend', this.touchEndHandler);

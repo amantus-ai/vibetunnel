@@ -440,8 +440,9 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
         // DON'T preventDefault - let browser also trigger input event for iOS key repeat
       } else if (e.key === 'Tab' && this.inputManager) {
         this.inputManager.sendInput(e.shiftKey ? 'shift_tab' : 'tab');
-      } else if (e.key === 'Escape' && this.inputManager) {
-        this.inputManager.sendInput('escape');
+      } else if (e.key === 'Escape') {
+        e.stopPropagation();
+        this.inputManager?.sendInput('escape');
       }
     });
 
