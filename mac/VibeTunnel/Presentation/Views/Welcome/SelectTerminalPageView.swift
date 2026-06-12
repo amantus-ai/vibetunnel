@@ -19,6 +19,7 @@ struct SelectTerminalPageView: View {
     @State private var showingError = false
     @State private var errorTitle = ""
     @State private var errorMessage = ""
+    @State private var recoveryPermission: SystemPermission?
 
     var body: some View {
         VStack(spacing: 30) {
@@ -66,11 +67,9 @@ struct SelectTerminalPageView: View {
         .padding()
         .alert(self.errorTitle, isPresented: self.$showingError) {
             Button("OK") {}
-            if self.errorTitle == "Permission Denied" {
+            if let recoveryPermission = self.recoveryPermission {
                 Button("Open System Settings") {
-                    if let url =
-                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
-                    {
+                    if let url = recoveryPermission.settingsURL {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -87,55 +86,12 @@ struct SelectTerminalPageView: View {
                     .launchCommand(
                         "echo 'VibeTunnel Terminal Test: Success! You can now use VibeTunnel with your terminal.'")
             } catch {
-                // Handle errors
-                if let terminalError = error as? TerminalLauncherError {
-                    switch terminalError {
-                    case .appleScriptPermissionDenied:
-                        self.errorTitle = "Permission Denied"
-                        self.errorMessage =
-                            "VibeTunnel needs permission to control terminal applications.\n\nPlease grant Automation permission in System Settings > Privacy & Security > Automation."
-                    case .accessibilityPermissionDenied:
-                        self.errorTitle = "Accessibility Permission Required"
-                        self.errorMessage =
-                            "VibeTunnel needs Accessibility permission to send keystrokes to \(Terminal(rawValue: self.preferredTerminal)?.displayName ?? "terminal").\n\nPlease grant permission in System Settings > Privacy & Security > Accessibility."
-                    case .terminalNotFound:
-                        self.errorTitle = "Terminal Not Found"
-                        self.errorMessage =
-                            "The selected terminal application could not be found. Please select a different terminal."
-                    case let .appleScriptExecutionFailed(details, errorCode):
-                        if let code = errorCode {
-                            switch code {
-                            case -1743:
-                                self.errorTitle = "Permission Denied"
-                                self.errorMessage =
-                                    "VibeTunnel needs permission to control terminal applications.\n\nPlease grant Automation permission in System Settings > Privacy & Security > Automation."
-                            case -1728:
-                                self.errorTitle = "Terminal Not Available"
-                                self.errorMessage =
-                                    "The terminal application is not running or cannot be controlled.\n\nDetails: \(details)"
-                            case -1708:
-                                self.errorTitle = "Terminal Communication Error"
-                                self.errorMessage = "The terminal did not respond to the command.\n\nDetails: \(details)"
-                            case -25211:
-                                self.errorTitle = "Accessibility Permission Required"
-                                self.errorMessage =
-                                    "System Events requires Accessibility permission to send keystrokes.\n\nPlease grant permission in System Settings > Privacy & Security > Accessibility."
-                            default:
-                                self.errorTitle = "Terminal Launch Failed"
-                                self.errorMessage = "AppleScript error \(code): \(details)"
-                            }
-                        } else {
-                            self.errorTitle = "Terminal Launch Failed"
-                            self.errorMessage = "Failed to launch terminal: \(details)"
-                        }
-                    case let .processLaunchFailed(details):
-                        self.errorTitle = "Process Launch Failed"
-                        self.errorMessage = "Failed to start terminal process: \(details)"
-                    }
-                } else {
-                    self.errorTitle = "Terminal Launch Failed"
-                    self.errorMessage = error.localizedDescription
-                }
+                let alert = TerminalLaunchAlertContent(
+                    error: error,
+                    terminalName: Terminal(rawValue: self.preferredTerminal)?.displayName ?? "terminal")
+                self.errorTitle = alert.title
+                self.errorMessage = alert.message
+                self.recoveryPermission = alert.recoveryPermission
 
                 self.showingError = true
             }

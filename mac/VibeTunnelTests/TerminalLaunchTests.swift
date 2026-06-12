@@ -139,6 +139,14 @@ struct TerminalLaunchTests {
             Issue.record("Expected accessibility permission error for AppleScript code \(errorCode)")
             return
         }
+
+        let alert = TerminalLaunchAlertContent(
+            error: error.toTerminalLauncherError(),
+            terminalName: "iTerm2")
+        #expect(alert.title == "Accessibility Permission Required")
+        #expect(alert.message.contains("iTerm2"))
+        #expect(alert.recoveryPermission == .accessibility)
+        #expect(alert.recoveryPermission?.settingsURL?.absoluteString.contains("Privacy_Accessibility") == true)
     }
 
     @Test
@@ -154,6 +162,13 @@ struct TerminalLaunchTests {
             Issue.record("Expected automation permission error")
             return
         }
+
+        let alert = TerminalLaunchAlertContent(
+            error: error.toTerminalLauncherError(),
+            terminalName: "iTerm2")
+        #expect(alert.title == "Permission Denied")
+        #expect(alert.recoveryPermission == .appleScript)
+        #expect(alert.recoveryPermission?.settingsURL?.absoluteString.contains("Privacy_Automation") == true)
     }
 
     @Test

@@ -71,13 +71,17 @@ enum SystemPermission {
         }
     }
 
-    fileprivate var settingsURLString: String {
+    private var settingsURLString: String {
         switch self {
         case .appleScript:
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
         case .accessibility:
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         }
+    }
+
+    var settingsURL: URL? {
+        URL(string: self.settingsURLString)
     }
 }
 
@@ -349,7 +353,7 @@ final class SystemPermissionManager {
     // MARK: - Utilities
 
     private func openSystemSettings(for permission: SystemPermission) {
-        if let url = URL(string: permission.settingsURLString) {
+        if let url = permission.settingsURL {
             NSWorkspace.shared.open(url)
         }
     }

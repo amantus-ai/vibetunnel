@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Guide macOS terminal-test permission failures to the correct Automation or Accessibility settings pane (#554)
 - Add Warp Preview as a selectable macOS terminal, including app detection and command launching. (#535)
 - Show friendly authentication labels in the web user menu instead of raw internal method names (#369)
 - Keep macOS DMG labels readable and fully visible across Finder toolbar settings (reported by [@MrMage](https://github.com/MrMage)) (#409)
