@@ -187,9 +187,16 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
               logger.info('Tailscale Serve configured successfully (exit code 0)');
               // The serve process is now running in background
               this.serveProcess = null; // Clear reference as process has exited
-              // Exit code 0 is the CLI's completion signal. Settle immediately so the
-              // startup timeout cannot clear the configured port before status polling.
-              settlePromise(true);
+              clearTimeout(timeout);
+              void this.waitForServeConfiguration(port).then(
+                (isConfigured) => {
+                  settlePromise(
+                    isConfigured,
+                    'Tailscale Serve proxy was not configured after the command completed'
+                  );
+                },
+                (error) => settlePromise(false, error)
+              );
             } else {
               settlePromise(false, `Tailscale Serve failed with exit code ${code}`);
             }
@@ -588,8 +595,11 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
             `✅ [TAILSCALE STATUS] Found manually configured Tailscale Serve for port ${portToCheck}`
           );
         } else {
-          // No configuration found - this is a normal case, not an error
-          verificationError = 'Tailscale Serve is starting up or needs reconfiguration';
+          // No configuration is expected while idle. Only report an error when a
+          // previously configured proxy has disappeared.
+          if (this.currentPort !== null) {
+            verificationError = 'Tailscale Serve is starting up or needs reconfiguration';
+          }
           logger.info(
             `[TAILSCALE STATUS] No Serve configuration found for port ${portToCheck} - may need restart`
           );
@@ -621,21 +631,14 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     // This handles the case where --bg makes the process exit immediately
     const desiredMode = this.desiredFunnel ? 'public' : 'private';
     const actualMode = this.funnelEnabled ? 'public' : 'private';
-    const modesMatch = desiredMode === actualMode;
-
-    // If desired and actual modes match, and we have a port configured, consider it running
-    // This is important because with --bg flag, the process exits immediately after configuration
-    // Also, if we're in public mode and Funnel has been enabled, trust that it's working
-    const effectivelyRunning =
-      actuallyRunning ||
-      (modesMatch && this.currentPort !== null && !this.isStarting) ||
-      (this.funnelEnabled && actualMode === 'public');
+    // The background command exiting successfully only records the port to verify.
+    // Do not report Serve as running after its persistent proxy is removed externally.
+    const effectivelyRunning = actuallyRunning;
 
     const result: TailscaleServeStatus = {
       isRunning: effectivelyRunning,
       port: effectivelyRunning ? (this.currentPort ?? undefined) : undefined,
-      // Don't show error if modes match and we're configured
-      lastError: effectivelyRunning || modesMatch ? undefined : verificationError || this.lastError,
+      lastError: effectivelyRunning ? undefined : verificationError || this.lastError,
       startTime: this.startTime,
       isPermanentlyDisabled: this.isPermanentlyDisabled,
       funnelEnabled: this.funnelEnabled,
@@ -777,6 +780,22 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         }
       }, 3000);
     });
+  }
+
+  private async waitForServeConfiguration(port: number): Promise<boolean> {
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (await this.verifyServeConfiguration(port)) {
+        return true;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+
+    return false;
   }
 
   /**

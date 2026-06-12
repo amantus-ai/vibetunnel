@@ -42,8 +42,14 @@ describe('TailscaleServeService startup', () => {
     (
       service as unknown as {
         checkTailscaleAvailable(): Promise<void>;
+        verifyServeConfiguration(port: number): Promise<boolean>;
       }
     ).checkTailscaleAvailable = vi.fn().mockResolvedValue(undefined);
+    (
+      service as unknown as {
+        verifyServeConfiguration(port: number): Promise<boolean>;
+      }
+    ).verifyServeConfiguration = vi.fn().mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -87,5 +93,48 @@ describe('TailscaleServeService startup', () => {
 
     await service.stop();
     expect(service.isRunning()).toBe(false);
+  });
+
+  it('waits for the persistent proxy to become observable before resolving startup', async () => {
+    const resetProcess = fakeProcess();
+    const serveProcess = fakeProcess();
+    const verificationMock = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    (
+      service as unknown as {
+        verifyServeConfiguration(port: number): Promise<boolean>;
+      }
+    ).verifyServeConfiguration = verificationMock;
+
+    spawnMock
+      .mockImplementationOnce(
+        (_command: string, _args: readonly string[], _options: SpawnOptions) => {
+          queueMicrotask(() => resetProcess.emit('exit', 0, null));
+          return resetProcess;
+        }
+      )
+      .mockImplementationOnce(
+        (_command: string, _args: readonly string[], _options: StdioOptions) => {
+          queueMicrotask(() => serveProcess.emit('exit', 0, null));
+          return serveProcess;
+        }
+      );
+
+    const startPromise = service.start(43213);
+    let resolved = false;
+    void startPromise.then(() => {
+      resolved = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(200);
+    expect(resolved).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(200);
+    await expect(startPromise).resolves.toBeUndefined();
+    expect(verificationMock).toHaveBeenCalledTimes(3);
   });
 });
