@@ -171,6 +171,33 @@ struct TerminalLaunchTests {
         #expect(script.contains("key code 36"))
     }
 
+    @Test
+    func warpPreviewUsesItsOwnAppIdentityAndWarpLaunchBehavior() {
+        #expect(Terminal.warpPreview.rawValue == "Warp Preview")
+        #expect(Terminal.warpPreview.bundleIdentifier == BundleIdentifiers.warpPreview)
+        #expect(Terminal.warpPreview.applicationName == "WarpPreview")
+        #expect(Terminal.warpPreview.processName == "WarpPreview")
+        #expect(Terminal.warpPreview.detectionPriority < Terminal.warp.detectionPriority)
+
+        let installed = Terminal.installed { bundleIdentifier in
+            bundleIdentifier == BundleIdentifiers.warpPreview
+                ? URL(fileURLWithPath: "/Applications/WarpPreview.app")
+                : nil
+        }
+        #expect(installed == [.terminal, .warpPreview])
+
+        let config = TerminalLaunchConfig(
+            command: "printf 'VibeTunnel Warp Preview test'",
+            workingDirectory: nil,
+            terminal: .warpPreview)
+        let script = Terminal.warpPreview.unifiedAppleScript(for: config)
+
+        #expect(script.contains("tell application \"WarpPreview\""))
+        #expect(script.contains("keystroke \"n\" using {command down}"))
+        #expect(script.contains("keystroke \"v\" using {command down}"))
+        #expect(script.contains("keystroke (ASCII character 13)"))
+    }
+
     // MARK: - Script File Tests
 
     @Test

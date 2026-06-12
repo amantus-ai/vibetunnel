@@ -17,6 +17,7 @@ enum BundleIdentifiers {
     static let ghostty = "com.mitchellh.ghostty"
     static let wezterm = "com.github.wez.wezterm"
     static let warp = "dev.warp.Warp-Stable"
+    static let warpPreview = "dev.warp.Warp-Preview"
     static let alacritty = "org.alacritty"
     static let hyper = "co.zeit.hyper"
     static let kitty = "net.kovidgoyal.kitty"

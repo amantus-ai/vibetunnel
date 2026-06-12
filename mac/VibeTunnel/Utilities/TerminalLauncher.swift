@@ -76,6 +76,7 @@ enum Terminal: String, CaseIterable {
     case iTerm2
     case ghostty = "Ghostty"
     case warp = "Warp"
+    case warpPreview = "Warp Preview"
     case alacritty = "Alacritty"
     case hyper = "Hyper"
     case wezterm = "WezTerm"
@@ -91,6 +92,8 @@ enum Terminal: String, CaseIterable {
             BundleIdentifiers.ghostty
         case .warp:
             BundleIdentifiers.warp
+        case .warpPreview:
+            BundleIdentifiers.warpPreview
         case .alacritty:
             BundleIdentifiers.alacritty
         case .hyper:
@@ -108,6 +111,7 @@ enum Terminal: String, CaseIterable {
         case .terminal: 100 // Highest - macOS default, most popular
         case .iTerm2: 95 // Very popular among developers
         case .warp: 85 // Popular modern terminal
+        case .warpPreview: 84 // Prefer stable Warp when both channels are installed
         case .ghostty: 80 // New but gaining popularity
         case .kitty: 75 // Fast GPU-based terminal
         case .alacritty: 70 // Popular among power users
@@ -126,6 +130,7 @@ enum Terminal: String, CaseIterable {
         case .iTerm2: "iTerm2"
         case .ghostty: "Ghostty"
         case .warp: "Warp"
+        case .warpPreview: "WarpPreview"
         case .alacritty: "Alacritty"
         case .hyper: "Hyper"
         case .wezterm: "WezTerm"
@@ -134,10 +139,16 @@ enum Terminal: String, CaseIterable {
     }
 
     var isInstalled: Bool {
+        self.isInstalled { bundleIdentifier in
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+        }
+    }
+
+    func isInstalled(applicationURL: (String) -> URL?) -> Bool {
         if self == .terminal {
             return true // Terminal is always installed
         }
-        return NSWorkspace.shared.urlForApplication(withBundleIdentifier: self.bundleIdentifier) != nil
+        return applicationURL(self.bundleIdentifier) != nil
     }
 
     var appIcon: NSImage? {
@@ -148,7 +159,13 @@ enum Terminal: String, CaseIterable {
     }
 
     static var installed: [Self] {
-        allCases.filter(\.isInstalled)
+        self.installed { bundleIdentifier in
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+        }
+    }
+
+    static func installed(applicationURL: (String) -> URL?) -> [Self] {
+        allCases.filter { $0.isInstalled(applicationURL: applicationURL) }
     }
 
     /// Check if a specific terminal application is currently running
@@ -195,7 +212,7 @@ enum Terminal: String, CaseIterable {
         // Special handling for Warp terminal
         // Warp doesn't recognize standard key codes for Enter (36 or 76)
         // and requires ASCII character 13 (carriage return) to execute commands
-        if self == .warp {
+        if self == .warp || self == .warpPreview {
             return """
             tell application "\(self.processName)"
                 activate
@@ -277,7 +294,7 @@ enum Terminal: String, CaseIterable {
             // Use unified AppleScript approach for consistency
             .appleScript(script: self.unifiedAppleScript(for: config))
 
-        case .warp:
+        case .warp, .warpPreview:
             // Use unified AppleScript approach
             .appleScript(script: self.unifiedAppleScript(for: config))
 
@@ -302,6 +319,7 @@ enum Terminal: String, CaseIterable {
         case .iTerm2: "iTerm"
         case .ghostty: "ghostty" // lowercase for System Events
         case .warp: "Warp"
+        case .warpPreview: "WarpPreview"
         case .alacritty: "Alacritty"
         case .hyper: "Hyper"
         case .wezterm: "WezTerm"
