@@ -1,9 +1,6 @@
 import { type ChildProcess, spawn } from 'child_process';
-import { createLogger, type Logger } from '../utils/logger.js';
+import { createLogger } from '../utils/logger.js';
 
-/**
- * Common tunnel information returned by all tunnel services.
- */
 export interface TunnelInfo {
   publicUrl: string;
   proto: string;
@@ -11,38 +8,21 @@ export interface TunnelInfo {
   uri: string;
 }
 
-/**
- * Configuration for tunnel startup behavior.
- */
 export interface TunnelStartupConfig {
-  /** Timeout in milliseconds before giving up on tunnel startup. Default: 30000 */
   startupTimeoutMs?: number;
-  /** Timeout in milliseconds for graceful shutdown. Default: 5000 */
   shutdownTimeoutMs?: number;
 }
 
-/**
- * Abstract base class for tunnel services (ngrok, cloudflared, etc.).
- *
- * This class extracts common functionality:
- * - Binary discovery across multiple paths
- * - Process lifecycle management (start/stop)
- * - Graceful shutdown with SIGTERM -> SIGKILL fallback
- * - State tracking (isRunning, currentTunnel)
- *
- * Subclasses must implement:
- * - getBinaryPaths(): Return list of paths to search for the binary
- * - getBinaryVersionArgs(): Return args to check binary version
- * - buildStartArgs(): Return args to start the tunnel
- * - parseOutput(): Parse stdout/stderr to extract tunnel URL
- */
+export type TunnelOutputSource = 'stdout' | 'stderr';
+
 export abstract class TunnelServiceBase {
-  protected process: ChildProcess | null = null;
-  protected currentTunnel: TunnelInfo | null = null;
-  protected isRunning = false;
-  protected readonly logger: Logger;
+  protected readonly logger: ReturnType<typeof createLogger>;
   protected readonly startupTimeoutMs: number;
   protected readonly shutdownTimeoutMs: number;
+
+  private process: ChildProcess | null = null;
+  private currentTunnel: TunnelInfo | null = null;
+  private isRunning = false;
 
   constructor(
     loggerName: string,
@@ -50,222 +30,185 @@ export abstract class TunnelServiceBase {
     config: TunnelStartupConfig = {}
   ) {
     this.logger = createLogger(loggerName);
-    this.startupTimeoutMs = config.startupTimeoutMs ?? 30000;
-    this.shutdownTimeoutMs = config.shutdownTimeoutMs ?? 5000;
+    this.startupTimeoutMs = config.startupTimeoutMs ?? 30_000;
+    this.shutdownTimeoutMs = config.shutdownTimeoutMs ?? 5_000;
   }
 
-  /**
-   * Get list of paths to search for the tunnel binary.
-   * Should include global PATH name, common install locations, etc.
-   */
-  protected abstract getBinaryPaths(): string[];
-
-  /**
-   * Get arguments to verify binary version/availability.
-   * E.g., ['--version'] or ['version']
-   */
-  protected abstract getBinaryVersionArgs(): string[];
-
-  /**
-   * Build command line arguments to start the tunnel.
-   */
-  protected abstract buildStartArgs(): string[];
-
-  /**
-   * Parse process output to extract tunnel URL.
-   * Called for each chunk of stdout/stderr data.
-   *
-   * @param output - Raw output string from the process
-   * @returns Tunnel URL if found, null otherwise
-   */
-  protected abstract parseOutput(output: string): string | null;
-
-  /**
-   * Get the service name for logging and error messages.
-   */
   protected abstract getServiceName(): string;
+  protected abstract getProcessName(): string;
+  protected abstract getBinaryPaths(): string[];
+  protected abstract getBinaryVersionArgs(): string[];
+  protected abstract getBinaryNotFoundMessage(): string;
+  protected abstract getStartupTimeoutMessage(): string;
+  protected abstract buildStartArgs(): string[];
+  protected abstract parseOutput(output: string, source: TunnelOutputSource): string | null;
+  protected abstract createTunnelInfo(publicUrl: string): TunnelInfo;
 
-  /**
-   * Check if the tunnel binary is available.
-   * Searches through all paths returned by getBinaryPaths().
-   *
-   * @returns Path to the binary if found, null otherwise
-   */
-  async checkBinary(): Promise<string | null> {
-    const paths = this.getBinaryPaths();
-    const versionArgs = this.getBinaryVersionArgs();
+  protected async checkBinary(): Promise<string | null> {
+    for (const binaryPath of this.getBinaryPaths()) {
+      const available = await new Promise<boolean>((resolve) => {
+        const process = spawn(binaryPath, this.getBinaryVersionArgs(), { stdio: 'ignore' });
+        let settled = false;
 
-    for (const binaryPath of paths) {
-      try {
-        const result = await new Promise<boolean>((resolve) => {
-          const proc = spawn(binaryPath, versionArgs, { stdio: 'ignore' });
-          proc.on('close', (code) => resolve(code === 0));
-          proc.on('error', () => resolve(false));
-          // Timeout after 2 seconds
-          setTimeout(() => {
-            proc.kill();
-            resolve(false);
-          }, 2000);
-        });
+        const finish = (result: boolean) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          clearTimeout(timeout);
+          resolve(result);
+        };
 
-        if (result) {
-          this.logger.debug(`Found ${this.getServiceName()} at: ${binaryPath}`);
-          return binaryPath;
-        }
-      } catch {
-        // Continue checking other paths
+        const timeout = setTimeout(() => {
+          process.kill();
+          finish(false);
+        }, 2_000);
+
+        process.once('close', (code) => finish(code === 0));
+        process.once('error', () => finish(false));
+      });
+
+      if (available) {
+        this.logger.debug(`Found ${this.getServiceName()} at: ${binaryPath}`);
+        return binaryPath;
       }
     }
 
     return null;
   }
 
-  /**
-   * Start the tunnel.
-   *
-   * @returns Tunnel information on success
-   * @throws Error if binary not found or startup fails/times out
-   */
   async start(): Promise<TunnelInfo> {
-    if (this.isRunning) {
+    if (this.isRunning && this.currentTunnel) {
       this.logger.warn(`${this.getServiceName()} tunnel is already running`);
-      if (this.currentTunnel) {
-        return this.currentTunnel;
-      }
+      return this.currentTunnel;
     }
 
     const binaryPath = await this.checkBinary();
     if (!binaryPath) {
-      throw new Error(`${this.getServiceName()} binary not found`);
+      throw new Error(this.getBinaryNotFoundMessage());
     }
 
-    const args = this.buildStartArgs();
     this.logger.log(`Starting ${this.getServiceName()} tunnel on port ${this.port}...`);
 
     return new Promise((resolve, reject) => {
-      this.process = spawn(binaryPath, args, {
+      const process = spawn(binaryPath, this.buildStartArgs(), {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
+      this.process = process;
+      let settled = false;
 
-      let startupTimeout: NodeJS.Timeout;
-      let resolved = false;
-
-      const cleanup = () => {
-        if (startupTimeout) clearTimeout(startupTimeout);
-      };
-
-      const handleOutput = (data: Buffer) => {
-        const output = data.toString();
-        this.logger.debug(`${this.getServiceName()} output:`, output);
-
-        const url = this.parseOutput(output);
-        if (url && !resolved) {
-          resolved = true;
-          this.currentTunnel = {
-            publicUrl: url,
-            proto: url.startsWith('https') ? 'https' : 'http',
-            name: this.getServiceName().toLowerCase(),
-            uri: `http://localhost:${this.port}`,
-          };
-          this.isRunning = true;
-          cleanup();
-          this.logger.log(`${this.getServiceName()} tunnel started: ${url}`);
-          resolve(this.currentTunnel);
+      const finish = (error?: Error, tunnel?: TunnelInfo) => {
+        if (settled) {
+          return;
         }
+        settled = true;
+        clearTimeout(startupTimeout);
 
-        // Log errors
-        if (output.toLowerCase().includes('error') && !resolved) {
-          this.logger.error(`${this.getServiceName()} error:`, output);
+        if (error) {
+          reject(error);
+        } else if (tunnel) {
+          resolve(tunnel);
         }
       };
 
-      this.process.stdout?.on('data', handleOutput);
-      this.process.stderr?.on('data', handleOutput);
+      const handleOutput = (source: TunnelOutputSource) => (data: Buffer) => {
+        const publicUrl = this.parseOutput(data.toString(), source);
+        if (!publicUrl || settled) {
+          return;
+        }
 
-      this.process.on('error', (error) => {
-        if (!resolved) {
-          resolved = true;
-          this.isRunning = false;
-          cleanup();
-          reject(new Error(`Failed to start ${this.getServiceName()}: ${error.message}`));
+        const tunnel = this.createTunnelInfo(publicUrl);
+        this.currentTunnel = tunnel;
+        this.isRunning = true;
+        this.logger.log(`${this.getServiceName()} tunnel started: ${publicUrl}`);
+        finish(undefined, tunnel);
+      };
+
+      process.stdout?.on('data', handleOutput('stdout'));
+      process.stderr?.on('data', handleOutput('stderr'));
+
+      process.once('error', (error) => {
+        this.clearProcessState(process);
+        finish(new Error(`Failed to start ${this.getProcessName()}: ${error.message}`));
+      });
+
+      process.once('close', (code) => {
+        this.clearProcessState(process);
+        if (!settled) {
+          finish(
+            new Error(
+              `${this.getProcessName()} process exited before tunnel startup${
+                code === null ? '' : ` (code ${code})`
+              }`
+            )
+          );
+        } else if (code !== 0 && code !== null) {
+          this.logger.error(`${this.getProcessName()} process exited with code ${code}`);
         }
       });
 
-      this.process.on('close', (code) => {
-        this.isRunning = false;
-        this.currentTunnel = null;
-        if (code !== 0 && code !== null) {
-          this.logger.error(`${this.getServiceName()} process exited with code ${code}`);
+      const startupTimeout = setTimeout(() => {
+        if (settled) {
+          return;
         }
-      });
-
-      // Timeout if tunnel doesn't start
-      startupTimeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          this.stop().catch(() => {});
-          reject(new Error(`${this.getServiceName()} startup timeout - tunnel failed to start`));
-        }
+        finish(new Error(this.getStartupTimeoutMessage()));
+        void this.stop();
       }, this.startupTimeoutMs);
     });
   }
 
-  /**
-   * Stop the tunnel gracefully.
-   * Sends SIGTERM first, then SIGKILL after timeout.
-   */
   async stop(): Promise<void> {
-    if (!this.process) {
+    const process = this.process;
+    if (!process) {
       return;
     }
 
     this.logger.log(`Stopping ${this.getServiceName()} tunnel...`);
 
-    return new Promise((resolve) => {
-      if (!this.process) {
+    await new Promise<void>((resolve) => {
+      let settled = false;
+
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(killTimeout);
+        this.clearProcessState(process);
         resolve();
-        return;
-      }
+      };
 
       const killTimeout = setTimeout(() => {
-        if (this.process) {
-          this.logger.warn(`${this.getServiceName()} process did not exit gracefully, forcing kill`);
-          this.process.kill('SIGKILL');
-        }
-        resolve();
+        this.logger.warn(`${this.getProcessName()} process did not exit gracefully, forcing kill`);
+        process.kill('SIGKILL');
+        finish();
       }, this.shutdownTimeoutMs);
 
-      this.process.on('close', () => {
-        clearTimeout(killTimeout);
-        this.process = null;
-        this.currentTunnel = null;
-        this.isRunning = false;
-        this.logger.log(`${this.getServiceName()} tunnel stopped`);
-        resolve();
-      });
-
-      this.process.kill('SIGTERM');
+      process.once('close', finish);
+      process.kill('SIGTERM');
     });
+
+    this.logger.log(`${this.getServiceName()} tunnel stopped`);
   }
 
-  /**
-   * Get current tunnel information.
-   */
   getTunnel(): TunnelInfo | null {
     return this.currentTunnel;
   }
 
-  /**
-   * Check if tunnel is currently running.
-   */
   isActive(): boolean {
     return this.isRunning;
   }
 
-  /**
-   * Get public URL if tunnel is active.
-   */
   getPublicUrl(): string | null {
-    return this.currentTunnel?.publicUrl || null;
+    return this.currentTunnel?.publicUrl ?? null;
+  }
+
+  private clearProcessState(process: ChildProcess): void {
+    if (this.process !== process) {
+      return;
+    }
+    this.process = null;
+    this.currentTunnel = null;
+    this.isRunning = false;
   }
 }

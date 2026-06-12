@@ -19,30 +19,39 @@ describe('CloudflareService', () => {
   });
 
   it('starts a quick tunnel and returns the public URL', async () => {
-    const processMock = new MockChildProcess();
-    vi.mocked(spawn).mockReturnValue(processMock as unknown as ChildProcess);
+    const versionProcess = new MockChildProcess();
+    const tunnelProcess = new MockChildProcess();
+    vi.mocked(spawn)
+      .mockReturnValueOnce(versionProcess as unknown as ChildProcess)
+      .mockReturnValueOnce(tunnelProcess as unknown as ChildProcess);
 
     const service = new CloudflareService(4020);
-    const serviceWithBinaryCheck = service as unknown as {
-      checkCloudflaredBinary: () => Promise<string | null>;
-    };
-    serviceWithBinaryCheck.checkCloudflaredBinary = vi
-      .fn()
-      .mockResolvedValue('/usr/local/bin/cloudflared');
-
     const startPromise = service.start();
 
     setImmediate(() => {
-      processMock.stdout.emit('data', Buffer.from('https://example.trycloudflare.com'));
+      versionProcess.emit('close', 0);
+      setImmediate(() => {
+        tunnelProcess.stdout.emit('data', Buffer.from('https://example.trycloudflare.com'));
+      });
     });
 
     const tunnel = await startPromise;
 
-    expect(tunnel.publicUrl).toBe('https://example.trycloudflare.com');
+    expect(tunnel).toEqual({
+      publicUrl: 'https://example.trycloudflare.com',
+      proto: 'https',
+      name: 'cloudflare-quick-tunnel',
+      uri: 'http://localhost:4020',
+    });
     expect(service.isActive()).toBe(true);
 
-    const [command, args] = vi.mocked(spawn).mock.calls[0];
-    expect(command).toBe('/usr/local/bin/cloudflared');
+    expect(vi.mocked(spawn).mock.calls[0]).toEqual([
+      'cloudflared',
+      ['--version'],
+      { stdio: 'ignore' },
+    ]);
+    const [command, args] = vi.mocked(spawn).mock.calls[1];
+    expect(command).toBe('cloudflared');
     expect(args).toEqual(['tunnel', '--url', 'http://localhost:4020']);
   });
 });

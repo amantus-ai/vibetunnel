@@ -19,8 +19,11 @@ describe('NgrokService', () => {
   });
 
   it('starts a tunnel and parses the public URL', async () => {
-    const processMock = new MockChildProcess();
-    vi.mocked(spawn).mockReturnValue(processMock as unknown as ChildProcess);
+    const versionProcess = new MockChildProcess();
+    const tunnelProcess = new MockChildProcess();
+    vi.mocked(spawn)
+      .mockReturnValueOnce(versionProcess as unknown as ChildProcess)
+      .mockReturnValueOnce(tunnelProcess as unknown as ChildProcess);
 
     const service = new NgrokService({
       port: 4020,
@@ -29,29 +32,33 @@ describe('NgrokService', () => {
       region: 'eu',
     });
 
-    const serviceWithBinaryCheck = service as unknown as {
-      checkNgrokBinary: () => Promise<string | null>;
-    };
-    serviceWithBinaryCheck.checkNgrokBinary = vi.fn().mockResolvedValue('/usr/bin/ngrok');
-
     const startPromise = service.start();
 
     setImmediate(() => {
-      processMock.stdout.emit(
-        'data',
-        Buffer.from(
-          `${JSON.stringify({ msg: 'started tunnel', url: 'https://example.ngrok.io' })}\n`
-        )
-      );
+      versionProcess.emit('close', 0);
+      setImmediate(() => {
+        tunnelProcess.stdout.emit(
+          'data',
+          Buffer.from(
+            `${JSON.stringify({ msg: 'started tunnel', url: 'https://example.ngrok.io' })}\n`
+          )
+        );
+      });
     });
 
     const tunnel = await startPromise;
 
-    expect(tunnel.publicUrl).toBe('https://example.ngrok.io');
+    expect(tunnel).toEqual({
+      publicUrl: 'https://example.ngrok.io',
+      proto: 'http',
+      name: 'command_line',
+      uri: 'http://localhost:4020',
+    });
     expect(service.isActive()).toBe(true);
 
-    const [command, args] = vi.mocked(spawn).mock.calls[0];
-    expect(command).toBe('/usr/bin/ngrok');
+    expect(vi.mocked(spawn).mock.calls[0]).toEqual(['ngrok', ['version'], { stdio: 'ignore' }]);
+    const [command, args] = vi.mocked(spawn).mock.calls[1];
+    expect(command).toBe('ngrok');
     expect(args).toEqual(
       expect.arrayContaining([
         'http',
@@ -66,5 +73,35 @@ describe('NgrokService', () => {
         'eu',
       ])
     );
+  });
+
+  it('logs stderr without treating it as tunnel startup output', async () => {
+    const versionProcess = new MockChildProcess();
+    const tunnelProcess = new MockChildProcess();
+    vi.mocked(spawn)
+      .mockReturnValueOnce(versionProcess as unknown as ChildProcess)
+      .mockReturnValueOnce(tunnelProcess as unknown as ChildProcess);
+
+    const service = new NgrokService({ port: 4020 });
+    const startPromise = service.start();
+    const rejection = expect(startPromise).rejects.toThrow(
+      'ngrok process exited before tunnel startup (code 1)'
+    );
+
+    setImmediate(() => {
+      versionProcess.emit('close', 0);
+      setImmediate(() => {
+        tunnelProcess.stderr.emit(
+          'data',
+          Buffer.from(
+            `${JSON.stringify({ msg: 'started tunnel', url: 'https://example.ngrok.io' })}\n`
+          )
+        );
+        tunnelProcess.emit('close', 1);
+      });
+    });
+
+    await rejection;
+    expect(service.isActive()).toBe(false);
   });
 });

@@ -1,6 +1,10 @@
 import * as os from 'os';
 import * as path from 'path';
-import { TunnelServiceBase, type TunnelInfo } from './tunnel-service-base.js';
+import {
+  type TunnelInfo,
+  type TunnelOutputSource,
+  TunnelServiceBase,
+} from './tunnel-service-base.js';
 
 export interface NgrokConfig {
   authToken?: string;
@@ -9,17 +13,6 @@ export interface NgrokConfig {
   region?: string;
 }
 
-// Re-export for backward compatibility
-export type NgrokTunnel = TunnelInfo;
-
-/**
- * Ngrok tunnel service implementation.
- *
- * Extends TunnelServiceBase with ngrok-specific:
- * - Binary paths for ngrok installation locations
- * - JSON log parsing for tunnel URL extraction
- * - Support for authToken, domain, and region configuration
- */
 export class NgrokService extends TunnelServiceBase {
   private authToken?: string;
   private domain?: string;
@@ -33,6 +26,10 @@ export class NgrokService extends TunnelServiceBase {
   }
 
   protected getServiceName(): string {
+    return 'ngrok';
+  }
+
+  protected getProcessName(): string {
     return 'ngrok';
   }
 
@@ -50,6 +47,14 @@ export class NgrokService extends TunnelServiceBase {
 
   protected getBinaryVersionArgs(): string[] {
     return ['version'];
+  }
+
+  protected getBinaryNotFoundMessage(): string {
+    return 'ngrok binary not found. Please install ngrok: https://ngrok.com/download';
+  }
+
+  protected getStartupTimeoutMessage(): string {
+    return 'Ngrok startup timeout - tunnel failed to start';
   }
 
   protected buildStartArgs(): string[] {
@@ -70,28 +75,39 @@ export class NgrokService extends TunnelServiceBase {
     return args;
   }
 
-  protected parseOutput(output: string): string | null {
-    // Ngrok outputs JSON logs, parse each line
+  protected parseOutput(output: string, source: TunnelOutputSource): string | null {
+    if (source === 'stderr') {
+      this.logger.error('Ngrok stderr:', output);
+      return null;
+    }
+
     const lines = output.split('\n').filter(Boolean);
 
     for (const line of lines) {
       try {
         const log = JSON.parse(line);
 
-        // Look for tunnel started message
         if (log.msg === 'started tunnel' && log.url) {
           return log.url;
         }
 
-        // Log errors for debugging
         if (log.lvl === 'error' || log.err) {
           this.logger.error('Ngrok error:', log.err || log.msg);
         }
       } catch {
-        // Not JSON, skip (already logged by base class)
+        this.logger.debug('Ngrok output:', line);
       }
     }
 
     return null;
+  }
+
+  protected createTunnelInfo(publicUrl: string): TunnelInfo {
+    return {
+      publicUrl,
+      proto: 'http',
+      name: 'command_line',
+      uri: `http://localhost:${this.port}`,
+    };
   }
 }

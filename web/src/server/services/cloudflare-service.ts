@@ -1,28 +1,22 @@
 import * as os from 'os';
 import * as path from 'path';
-import { TunnelServiceBase, type TunnelInfo } from './tunnel-service-base.js';
+import {
+  type TunnelInfo,
+  type TunnelOutputSource,
+  TunnelServiceBase,
+} from './tunnel-service-base.js';
 
-// Re-export for backward compatibility
-export type CloudflareTunnel = TunnelInfo;
-
-/**
- * Cloudflare Quick Tunnel service implementation.
- *
- * Extends TunnelServiceBase with cloudflared-specific:
- * - Binary paths for cloudflared installation locations
- * - URL regex parsing for trycloudflare.com tunnel URLs
- * - No authentication required (uses Cloudflare Quick Tunnels)
- */
 export class CloudflareService extends TunnelServiceBase {
-  // Store binary path after first lookup for checkInstallation()
-  private cloudflaredPath: string | null = null;
-
   constructor(port: number) {
     super('cloudflare-service', port);
   }
 
   protected getServiceName(): string {
     return 'Cloudflare';
+  }
+
+  protected getProcessName(): string {
+    return 'cloudflared';
   }
 
   protected getBinaryPaths(): string[] {
@@ -42,23 +36,39 @@ export class CloudflareService extends TunnelServiceBase {
     return ['--version'];
   }
 
+  protected getBinaryNotFoundMessage(): string {
+    return 'cloudflared binary not found. Please install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/';
+  }
+
+  protected getStartupTimeoutMessage(): string {
+    return 'Cloudflare tunnel startup timeout - tunnel failed to start';
+  }
+
   protected buildStartArgs(): string[] {
     // Use Quick Tunnel (no auth required)
     return ['tunnel', '--url', `http://localhost:${this.port}`];
   }
 
-  protected parseOutput(output: string): string | null {
-    // Cloudflare outputs URL like: "https://random-words.trycloudflare.com"
+  protected parseOutput(output: string, _source: TunnelOutputSource): string | null {
+    this.logger.debug('Cloudflare output:', output);
+
     const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+    if (!urlMatch && output.toLowerCase().includes('error')) {
+      this.logger.error('Cloudflare error:', output);
+    }
     return urlMatch ? urlMatch[0] : null;
   }
 
-  /**
-   * Check if cloudflared is installed.
-   * Caches the result for subsequent calls.
-   */
+  protected createTunnelInfo(publicUrl: string): TunnelInfo {
+    return {
+      publicUrl,
+      proto: 'https',
+      name: 'cloudflare-quick-tunnel',
+      uri: `http://localhost:${this.port}`,
+    };
+  }
+
   async checkInstallation(): Promise<boolean> {
-    this.cloudflaredPath = await this.checkBinary();
-    return this.cloudflaredPath !== null;
+    return (await this.checkBinary()) !== null;
   }
 }
