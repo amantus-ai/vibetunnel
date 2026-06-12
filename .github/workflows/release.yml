@@ -20,6 +20,7 @@ jobs:
   build-mac:
     name: Build macOS App
     runs-on: macos-15
+    timeout-minutes: 60
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
     
@@ -86,6 +87,7 @@ jobs:
         mv build/Build/Products/Release/VibeTunnel.app build/Build/Products/Release/VibeTunnel-x86_64.app
     
     - name: Create DMGs and ZIPs
+      timeout-minutes: 15
       working-directory: mac
       run: |
         VERSION="${{ github.event.inputs.version || github.ref_name }}"

@@ -38,9 +38,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAC_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_DIR="$(dirname "$MAC_DIR")"
 BUILD_DIR="$MAC_DIR/build"
+DMG_BACKGROUND_PATH="$PROJECT_DIR/assets/dmg-background-small.png"
+DMG_WINDOW_X=400
+DMG_WINDOW_Y=100
+DMG_WINDOW_WIDTH=500
+DMG_WINDOW_HEIGHT=380
 
 if [[ ! -d "$APP_PATH" ]]; then
     echo "Error: App not found at $APP_PATH"
+    exit 1
+fi
+
+if [[ ! -f "$DMG_BACKGROUND_PATH" ]]; then
+    echo "Error: DMG background not found at $DMG_BACKGROUND_PATH"
+    exit 1
+fi
+
+BACKGROUND_WIDTH=$(sips -g pixelWidth "$DMG_BACKGROUND_PATH" | awk '/pixelWidth/ { print $2 }')
+BACKGROUND_HEIGHT=$(sips -g pixelHeight "$DMG_BACKGROUND_PATH" | awk '/pixelHeight/ { print $2 }')
+if [[ "$BACKGROUND_WIDTH" != "$DMG_WINDOW_WIDTH" || "$BACKGROUND_HEIGHT" != "$DMG_WINDOW_HEIGHT" ]]; then
+    echo "Error: DMG background must be ${DMG_WINDOW_WIDTH}x${DMG_WINDOW_HEIGHT}px"
+    echo "Found: ${BACKGROUND_WIDTH}x${BACKGROUND_HEIGHT}px"
     exit 1
 fi
 
@@ -64,6 +82,8 @@ fi
 
 DMG_NAME="${APP_NAME}-${VERSION}${ARCH_SUFFIX}.dmg"
 DMG_VOLUME_NAME="${DMG_VOLUME_NAME:-$APP_NAME}"
+DMG_WINDOW_RIGHT=$((DMG_WINDOW_X + DMG_WINDOW_WIDTH))
+DMG_WINDOW_BOTTOM=$((DMG_WINDOW_Y + DMG_WINDOW_HEIGHT))
 
 # Use provided output path or default
 if [[ $# -eq 2 ]]; then
@@ -119,6 +139,13 @@ echo "Applying custom styling to DMG..."
 
 # Mount the DMG
 MOUNT_POINT="/Volumes/$DMG_VOLUME_NAME"
+cleanup_mount() {
+    if mount | grep -Fq " on $MOUNT_POINT "; then
+        hdiutil detach "$MOUNT_POINT" -force >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup_mount EXIT
+
 # Ensure the mount point doesn't exist before mounting
 if [ -d "$MOUNT_POINT" ]; then
     echo "Mount point already exists, attempting to unmount..."
@@ -130,7 +157,7 @@ hdiutil attach "$DMG_RW_PATH" -mountpoint "$MOUNT_POINT" -nobrowse
 
 # Copy background image
 mkdir -p "$MOUNT_POINT/.background"
-cp "$PROJECT_DIR/assets/dmg-background-small.png" "$MOUNT_POINT/.background/background.png"
+cp "$DMG_BACKGROUND_PATH" "$MOUNT_POINT/.background/background.png"
 
 # Set custom volume icon
 if [[ -f "$PROJECT_DIR/assets/appicon-512.png" ]]; then
@@ -140,58 +167,53 @@ if [[ -f "$PROJECT_DIR/assets/appicon-512.png" ]]; then
 fi
 
 # Apply window styling with AppleScript
-osascript <<EOF
-tell application "Finder"
-    tell disk "$DMG_VOLUME_NAME"
-        open
-        
-        -- Get the window
-        set current view of container window to icon view
-        set toolbar visible of container window to false
-        set statusbar visible of container window to false
-        
-        -- Set window bounds (centered, 500x320)
-        set the bounds of container window to {400, 100, 900, 420}
-        
-        -- Configure icon view options
-        set viewOptions to the icon view options of container window
-        set arrangement of viewOptions to not arranged
-        set icon size of viewOptions to 128
-        
-        -- Set background
-        set background picture of viewOptions to file ".background:background.png"
-        
-        -- Set text color to white
-        set text size of viewOptions to 12
-        set label position of viewOptions to bottom
-        
-        -- Position items
-        set position of item "VibeTunnel.app" of container window to {125, 160}
-        set position of item "Applications" of container window to {375, 160}
-        
-        -- Set extended attributes for better appearance
-        set shows item info of viewOptions to false
-        set shows icon preview of viewOptions to true
-        
-        
-        -- Update without registering applications
-        update without registering applications
-        delay 2
-        
-        -- Close and reopen to ensure settings stick
-        close
-        open
-        delay 1
+if ! osascript <<EOF
+with timeout of 30 seconds
+    tell application "Finder"
+        repeat until exists disk "$DMG_VOLUME_NAME"
+            delay 0.5
+        end repeat
+
+        tell disk "$DMG_VOLUME_NAME"
+            open
+
+            set current view of container window to icon view
+            set toolbar visible of container window to false
+            set statusbar visible of container window to false
+            set pathbar visible of container window to false
+            set the bounds of container window to {$DMG_WINDOW_X, $DMG_WINDOW_Y, $DMG_WINDOW_RIGHT, $DMG_WINDOW_BOTTOM}
+
+            set viewOptions to the icon view options of container window
+            set arrangement of viewOptions to not arranged
+            set icon size of viewOptions to 128
+            set background picture of viewOptions to file ".background:background.png"
+
+            -- Finder does not expose icon-label text color through AppleScript.
+            set text size of viewOptions to 12
+            set label position of viewOptions to bottom
+
+            set position of item "VibeTunnel.app" of container window to {125, 160}
+            set position of item "Applications" of container window to {375, 160}
+            set shows item info of viewOptions to false
+            set shows icon preview of viewOptions to true
+
+            update without registering applications
+            delay 2
+            close
+            open
+            delay 1
+            close
+        end tell
     end tell
-end tell
+end timeout
 EOF
+then
+    echo "Error: Finder did not apply the DMG layout within 30 seconds"
+    exit 1
+fi
 
-# Give Finder time to update
-sleep 3
-
-# Force close Finder window to ensure settings are saved
-osascript -e 'tell application "Finder" to close every window'
-
+# Give Finder time to flush the volume's .DS_Store.
+sleep 2
 
 # Unmount with retry and force
 echo "Unmounting DMG..."

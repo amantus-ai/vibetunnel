@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Keep macOS DMG labels readable and fully visible across Finder toolbar settings (reported by [@MrMage](https://github.com/MrMage)) (#409)
 - Accept iOS hardware keyboard input without first opening the software keyboard (#491)
 - Keep iOS hardware Escape keys inside active terminal sessions (#492)
 - Keep the mobile terminal prompt visible when opening the software keyboard and quick keys (#544)
