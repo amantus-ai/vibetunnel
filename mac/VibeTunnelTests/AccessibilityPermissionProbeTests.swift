@@ -31,4 +31,25 @@ struct AccessibilityPermissionProbeTests {
             apiTrusted: true,
             crossProcessResults: []))
     }
+
+    @Test
+    func opensSettingsWhenPromptTrustIsStale() {
+        #expect(AccessibilityPermissionProbe.shouldOpenSettings(
+            promptReportedTrusted: true,
+            probeGranted: false))
+    }
+
+    @Test
+    func opensSettingsWhenPromptReportsNoTrust() {
+        #expect(AccessibilityPermissionProbe.shouldOpenSettings(
+            promptReportedTrusted: false,
+            probeGranted: false))
+    }
+
+    @Test
+    func doesNotOpenSettingsForWorkingPermission() {
+        #expect(!AccessibilityPermissionProbe.shouldOpenSettings(
+            promptReportedTrusted: true,
+            probeGranted: true))
+    }
 }

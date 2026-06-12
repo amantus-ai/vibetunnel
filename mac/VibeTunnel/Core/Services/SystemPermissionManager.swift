@@ -39,6 +39,10 @@ enum AccessibilityPermissionProbe {
     static func evaluate(apiTrusted: Bool, crossProcessResults: [AXError]) -> Bool {
         apiTrusted && crossProcessResults.contains(.success)
     }
+
+    static func shouldOpenSettings(promptReportedTrusted: Bool, probeGranted: Bool) -> Bool {
+        !promptReportedTrusted || !probeGranted
+    }
 }
 
 /// Types of system permissions that VibeTunnel requires.
@@ -320,12 +324,20 @@ final class SystemPermissionManager {
     private func requestAccessibilityPermission() {
         // Trigger the system dialog
         let options: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
-        let alreadyTrusted = AXIsProcessTrustedWithOptions(options)
+        let promptReportedTrusted = AXIsProcessTrustedWithOptions(options)
+        let probeGranted = AccessibilityPermissionProbe.isGranted()
 
-        if alreadyTrusted {
+        if !AccessibilityPermissionProbe.shouldOpenSettings(
+            promptReportedTrusted: promptReportedTrusted,
+            probeGranted: probeGranted)
+        {
             self.logger.info("Accessibility permission already granted")
         } else {
-            self.logger.info("Accessibility permission dialog triggered")
+            if promptReportedTrusted {
+                self.logger.info("Accessibility permission requires recovery in System Settings")
+            } else {
+                self.logger.info("Accessibility permission dialog triggered")
+            }
 
             // Also open System Settings as a fallback
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
