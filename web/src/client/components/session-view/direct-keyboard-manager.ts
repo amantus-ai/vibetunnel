@@ -34,6 +34,20 @@ import { ManagerEventEmitter } from './interfaces.js';
 
 const logger = createLogger('direct-keyboard-manager');
 
+const HARDWARE_SPECIAL_KEYS: Readonly<Record<string, string>> = {
+  Enter: 'enter',
+  Escape: 'escape',
+  ArrowUp: 'arrow_up',
+  ArrowDown: 'arrow_down',
+  ArrowLeft: 'arrow_left',
+  ArrowRight: 'arrow_right',
+  PageUp: 'page_up',
+  PageDown: 'page_down',
+  Home: 'home',
+  End: 'end',
+  Delete: 'delete',
+};
+
 export interface DirectKeyboardCallbacks {
   getShowCtrlAlpha(): boolean;
   getDisableFocusManagement(): boolean;
@@ -425,24 +439,22 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
         return;
       }
 
-      // Prevent default for special keys (but NOT backspace - we need the input event to fire for iOS)
-      if (['Enter', 'Tab', 'Escape'].includes(e.key)) {
-        e.preventDefault();
+      if (this.inputManager?.isKeyboardShortcut(e)) {
+        return;
       }
 
-      if (e.key === 'Enter' && this.inputManager) {
-        this.inputManager.sendInput('enter');
+      const specialKey =
+        e.key === 'Tab' ? (e.shiftKey ? 'shift_tab' : 'tab') : HARDWARE_SPECIAL_KEYS[e.key];
+      if (specialKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.inputManager?.sendInput(specialKey);
       } else if (e.key === 'Backspace' && this.inputManager) {
         // Send backspace immediately on keydown for responsiveness
         // The input event handler will skip if this just fired (within 50ms)
         this.inputManager.sendInput('backspace');
         this.lastBackspaceTime = Date.now();
         // DON'T preventDefault - let browser also trigger input event for iOS key repeat
-      } else if (e.key === 'Tab' && this.inputManager) {
-        this.inputManager.sendInput(e.shiftKey ? 'shift_tab' : 'tab');
-      } else if (e.key === 'Escape') {
-        e.stopPropagation();
-        this.inputManager?.sendInput('escape');
       }
     });
 

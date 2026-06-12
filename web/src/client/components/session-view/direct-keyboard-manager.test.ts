@@ -7,7 +7,7 @@ import type { InputManager } from './input-manager';
 
 describe('DirectKeyboardManager', () => {
   let manager: DirectKeyboardManager;
-  let mockInputManager: Pick<InputManager, 'sendInput' | 'sendInputText'>;
+  let mockInputManager: Pick<InputManager, 'isKeyboardShortcut' | 'sendInput' | 'sendInputText'>;
   let originalRequestAnimationFrame: typeof requestAnimationFrame;
 
   const getManagerState = () =>
@@ -28,7 +28,11 @@ describe('DirectKeyboardManager', () => {
     });
 
     manager = new DirectKeyboardManager('test');
-    mockInputManager = { sendInput: vi.fn(), sendInputText: vi.fn() };
+    mockInputManager = {
+      isKeyboardShortcut: vi.fn().mockReturnValue(false),
+      sendInput: vi.fn(),
+      sendInputText: vi.fn(),
+    };
     manager.setInputManager(mockInputManager as InputManager);
 
     // Mock clipboard API using Object.defineProperty
@@ -153,5 +157,50 @@ describe('DirectKeyboardManager', () => {
     } finally {
       document.removeEventListener('keydown', documentKeydown);
     }
+  });
+
+  it.each([
+    ['Enter', false, 'enter'],
+    ['Tab', false, 'tab'],
+    ['Tab', true, 'shift_tab'],
+    ['Escape', false, 'escape'],
+    ['ArrowUp', false, 'arrow_up'],
+    ['ArrowDown', false, 'arrow_down'],
+    ['ArrowLeft', false, 'arrow_left'],
+    ['ArrowRight', false, 'arrow_right'],
+    ['PageUp', false, 'page_up'],
+    ['PageDown', false, 'page_down'],
+    ['Home', false, 'home'],
+    ['End', false, 'end'],
+    ['Delete', false, 'delete'],
+  ])('routes hardware %s from the hidden input', (key, shiftKey, expected) => {
+    const hiddenInput = getManagerState().hiddenInput;
+    const keyEvent = new KeyboardEvent('keydown', {
+      key,
+      shiftKey,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    hiddenInput?.dispatchEvent(keyEvent);
+
+    expect(keyEvent.defaultPrevented).toBe(true);
+    expect(mockInputManager.sendInput).toHaveBeenCalledWith(expected);
+  });
+
+  it('preserves browser shortcuts from the hidden input', () => {
+    const hiddenInput = getManagerState().hiddenInput;
+    vi.mocked(mockInputManager.isKeyboardShortcut).mockReturnValueOnce(true);
+    const keyEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowLeft',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    hiddenInput?.dispatchEvent(keyEvent);
+
+    expect(keyEvent.defaultPrevented).toBe(false);
+    expect(mockInputManager.sendInput).not.toHaveBeenCalled();
   });
 });
