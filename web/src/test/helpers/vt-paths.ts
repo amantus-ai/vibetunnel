@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import * as path from 'path';
 
 /**
@@ -11,5 +12,15 @@ export function getVtScriptPath(): string {
  * Get the path to the vibetunnel binary for testing
  */
 export function getVibetunnelBinaryPath(): string {
-  return path.join(process.cwd(), 'native', 'vibetunnel');
+  const nativeBinary = path.join(process.cwd(), 'native', 'vibetunnel');
+  if (existsSync(nativeBinary)) {
+    return nativeBinary;
+  }
+
+  const testBinary = path.join(process.cwd(), 'native', 'vibetunnel-test');
+  if (existsSync(testBinary)) {
+    return testBinary;
+  }
+
+  return path.join(process.cwd(), 'bin', 'vibetunnel');
 }

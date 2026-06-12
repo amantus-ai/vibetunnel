@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
 const { prodOptions } = require('./esbuild-config.js');
-const { nodePtyPlugin } = require('./node-pty-plugin.js');
+const { buildCli } = require('./build-cli.js');
 
 async function build() {
   console.log('Starting build process...');
@@ -61,60 +61,7 @@ async function build() {
   console.log('Building server...');
   execSync('npx tsc -p tsconfig.server.json', { stdio: 'inherit' });
 
-  // Bundle CLI
-  console.log('Bundling CLI...');
-  try {
-    await esbuild.build({
-      entryPoints: ['src/cli.ts'],
-      bundle: true,
-      platform: 'node',
-      target: 'node18',
-      format: 'cjs',
-      outfile: 'dist/vibetunnel-cli',
-      plugins: [nodePtyPlugin],
-      external: [
-        // 'node-pty', // Removed - handled by plugin
-        'authenticate-pam',
-        'compression',
-        'helmet',
-        'express',
-        'ghostty-web',
-        'ws',
-        'jsonwebtoken',
-        'web-push',
-        'bonjour-service',
-        'signal-exit',
-        'http-proxy-middleware',
-        'multer',
-        'mime-types',
-      ],
-      minify: true,
-      sourcemap: false,
-      loader: {
-        '.ts': 'ts',
-        '.js': 'js',
-      },
-    });
-    
-    // Read the file and ensure it has exactly one shebang
-    let content = fs.readFileSync('dist/vibetunnel-cli', 'utf8');
-    
-    // Remove any existing shebangs
-    content = content.replace(/^#!.*\n/gm, '');
-    
-    // Add a single shebang at the beginning
-    content = '#!/usr/bin/env node\n' + content;
-    
-    // Write the fixed content back
-    fs.writeFileSync('dist/vibetunnel-cli', content);
-    
-    // Make the CLI executable
-    fs.chmodSync('dist/vibetunnel-cli', '755');
-    console.log('CLI bundle created successfully');
-  } catch (error) {
-    console.error('CLI bundling failed:', error);
-    process.exit(1);
-  }
+  await buildCli();
 
   // Build zig forwarder first.
   // `build-native.js` runs verification in CI which expects the forwarder to exist.

@@ -70,15 +70,27 @@ fi
 if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
     echo "⚠️  Skipping vt --help test (already inside VibeTunnel session)"
 else
+    TEST_BIN=$(mktemp "${TMPDIR:-/tmp}/vibetunnel-test-bin.XXXXXX")
+    trap 'rm -f "$TEST_BIN"' EXIT
+    cat > "$TEST_BIN" <<'EOF'
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+    echo "VibeTunnel Server test"
+    echo "Built: test"
+    echo "Platform: test"
+fi
+EOF
+    chmod +x "$TEST_BIN"
+
     # Use gtimeout if available, otherwise skip timeout
     if command -v gtimeout >/dev/null 2>&1; then
-        if ! gtimeout 5 "$VT_SCRIPT" --help >/dev/null 2>&1; then
+        if ! VIBETUNNEL_BIN="$TEST_BIN" gtimeout 5 "$VT_SCRIPT" --help >/dev/null 2>&1; then
             echo "❌ ERROR: vt --help command failed or timed out"
             exit 1
         fi
     else
         # On macOS without gtimeout, just test that it doesn't immediately fail
-        if ! "$VT_SCRIPT" --help >/dev/null 2>&1; then
+        if ! VIBETUNNEL_BIN="$TEST_BIN" "$VT_SCRIPT" --help >/dev/null 2>&1; then
             echo "❌ ERROR: vt --help command failed"
             exit 1
         fi
