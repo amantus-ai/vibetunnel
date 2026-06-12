@@ -24,8 +24,14 @@ struct NotificationServiceTests {
             return openedURLs.count == 2
         }
 
+        let appURLComponents = openedURLs.first.flatMap {
+            URLComponents(url: $0, resolvingAgainstBaseURL: false)
+        }
+
         #expect(openedURLs.count == 2)
-        #expect(openedURLs.first?.query?.contains("id=sh.vibetunnel.vibetunnel.debug") == true)
+        #expect(
+            appURLComponents?.queryItems?.first(where: { $0.name == "id" })?.value ==
+                "sh.vibetunnel.vibetunnel.debug")
         #expect(openedURLs.last?.query == nil)
     }
 
@@ -39,8 +45,14 @@ struct NotificationServiceTests {
             return true
         }
 
+        let appURLComponents = openedURLs.first.flatMap {
+            URLComponents(url: $0, resolvingAgainstBaseURL: false)
+        }
+
         #expect(openedURLs.count == 1)
-        #expect(openedURLs.first?.query?.contains("id=sh.vibetunnel.vibetunnel") == true)
+        #expect(
+            appURLComponents?.queryItems?.first(where: { $0.name == "id" })?.value ==
+                "sh.vibetunnel.vibetunnel")
     }
 
     @Test
