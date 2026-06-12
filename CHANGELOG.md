@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Stop reporting macOS Accessibility permission as granted when VibeTunnel can inspect only its own windows (#337)
 - Open the current macOS app build's notification settings, including debug/ad-hoc bundle variants, and fall back to the general Notifications pane when needed.
 - Show the Accessibility recovery flow when Ghostty or another terminal rejects System Events keystrokes (#625)
 - Decode macOS session-creation timestamps in the server's ISO 8601 wire format, preventing a false error after the terminal opens (via [@apex-skyner](https://github.com/apex-skyner) and [@yashiels](https://github.com/yashiels)) (#635)

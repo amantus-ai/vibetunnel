@@ -9,6 +9,38 @@ extension Notification.Name {
     static let permissionsUpdated = Notification.Name("sh.vibetunnel.permissionsUpdated")
 }
 
+enum AccessibilityPermissionProbe {
+    private static let targetBundleIdentifiers = [
+        "com.apple.finder",
+        "com.apple.dock",
+        "com.apple.systemuiserver",
+    ]
+
+    static func isGranted() -> Bool {
+        let apiTrusted = AXIsProcessTrusted()
+        guard apiTrusted else {
+            return false
+        }
+
+        let crossProcessResults = self.targetBundleIdentifiers.compactMap { bundleIdentifier in
+            NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first
+        }.map { application in
+            let element = AXUIElementCreateApplication(application.processIdentifier)
+            var role: CFTypeRef?
+            return AXUIElementCopyAttributeValue(
+                element,
+                kAXRoleAttribute as CFString,
+                &role)
+        }
+
+        return self.evaluate(apiTrusted: apiTrusted, crossProcessResults: crossProcessResults)
+    }
+
+    static func evaluate(apiTrusted: Bool, crossProcessResults: [AXError]) -> Bool {
+        apiTrusted && crossProcessResults.contains(.success)
+    }
+}
+
 /// Types of system permissions that VibeTunnel requires.
 ///
 /// Represents the various macOS system permissions needed for full functionality,
@@ -280,51 +312,9 @@ final class SystemPermissionManager {
     // MARK: - Accessibility Permission
 
     private func checkAccessibilityPermission() -> Bool {
-        // First check the API
-        let apiResult = AXIsProcessTrusted()
-        self.logger.debug("AXIsProcessTrusted returned: \(apiResult)")
-
-        // More comprehensive test - try to get focused application and its windows
-        // This definitely requires accessibility permission
-        let systemElement = AXUIElementCreateSystemWide()
-        var focusedApp: CFTypeRef?
-        let appResult = AXUIElementCopyAttributeValue(
-            systemElement,
-            kAXFocusedApplicationAttribute as CFString,
-            &focusedApp)
-
-        if appResult == .success, let app = focusedApp {
-            // Try to get windows from the app - this definitely needs accessibility
-            var windows: CFTypeRef?
-            // Use unsafeBitCast for CFTypeRef to AXUIElement conversion
-            // This is safe because AXUIElementCopyAttributeValue guarantees the result is an AXUIElement
-            let axElement = unsafeDowncast(app, to: AXUIElement.self)
-            let windowResult = AXUIElementCopyAttributeValue(
-                axElement,
-                kAXWindowsAttribute as CFString,
-                &windows)
-
-            let hasAccess = windowResult == .success
-            self.logger
-                .debug("Comprehensive accessibility test result: \(hasAccess), can get windows: \(windows != nil)")
-
-            if hasAccess {
-                self.logger.debug("Accessibility permission verified through comprehensive test")
-                return true
-            } else if apiResult {
-                // API says yes but comprehensive test failed - permission not actually working
-                self.logger.debug("Accessibility API reports true but comprehensive test failed")
-                return false
-            }
-        } else {
-            // Can't even get focused app
-            self.logger.debug("Cannot get focused application - accessibility permission not granted")
-            if apiResult {
-                self.logger.debug("API reports true but cannot access UI elements")
-            }
-        }
-
-        return false
+        let hasAccess = AccessibilityPermissionProbe.isGranted()
+        self.logger.debug("Accessibility permission probe returned: \(hasAccess)")
+        return hasAccess
     }
 
     private func requestAccessibilityPermission() {
