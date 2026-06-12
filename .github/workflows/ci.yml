@@ -12,18 +12,22 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Check which parts of the codebase have changed
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       web: ${{ steps.filter.outputs.web }}
       mac: ${{ steps.filter.outputs.mac }}
       ios: ${{ steps.filter.outputs.ios }}
     steps:
-    - uses: actions/checkout@v5
-    - uses: dorny/paths-filter@v4
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+    - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
       id: filter
       with:
         filters: |

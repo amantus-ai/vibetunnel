@@ -10,6 +10,12 @@ on:
   pull_request_review:
     types: [submitted]
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
 # Cancel in-progress runs when a new Claude command is triggered on the same issue/PR
 concurrency:
   group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
@@ -30,18 +36,15 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@28f83620103c48a57093dcc2837eec89e036bb9f # beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
           
           # Optional: Customize the trigger phrase (default: @claude)
           # trigger_phrase: "/claude"
@@ -50,7 +53,7 @@ jobs:
           # assignee_trigger: "claude-bot"
           
           # Optional: Allow Claude to run specific commands
-          allowed_tools: "Bash(pnpm install),Bash(pnpm run build),Bash(pnpm run test),Bash(pnpm run test:*),Bash(pnpm run lint),Bash(pnpm run lint:*),Bash(pnpm run typecheck),Bash(pnpm run format)"
+          allowed_tools: "Bash(pnpm install --frozen-lockfile),Bash(pnpm run build),Bash(pnpm run test),Bash(pnpm run test:*),Bash(pnpm run lint),Bash(pnpm run lint:*),Bash(pnpm run typecheck),Bash(pnpm run format)"
           
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           # custom_instructions: |

@@ -20,17 +20,17 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
     - name: Setup Node.js
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       with:
         node-version: '24'
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       with:
-        version: 10
+        version: 10.15.0
         run_install: false
 
     - name: Install system dependencies
@@ -39,12 +39,12 @@ jobs:
         sudo apt-get install -y libpam0g-dev
 
     - name: Setup Zig
-      uses: mlugg/setup-zig@v2
+      uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
       with:
         version: 0.15.2
 
     - name: Cache TypeScript build info
-      uses: useblacksmith/cache@v5
+      uses: useblacksmith/cache@71c7c918062ba3861252d84b07fe5ab2a6b467a6 # v5
       continue-on-error: true
       with:
         path: |
@@ -65,7 +65,9 @@ jobs:
     - name: Build node-pty
       working-directory: web
       run: |
-        cd node-pty && npm install && npm run build
+        cd node-pty
+        pnpm install --frozen-lockfile --ignore-scripts
+        pnpm run build
 
     # Run all checks - build first, then tests
     - name: Run all checks
@@ -334,7 +336,7 @@ jobs:
     # Upload artifacts
     - name: Upload coverage artifacts
       if: always()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       with:
         name: node-coverage
         path: |
