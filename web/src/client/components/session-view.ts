@@ -1237,7 +1237,7 @@ export class SessionView extends LitElement {
             display: flex !important;
             flex-direction: column !important;
             height: 100vh !important;
-            height: 100dvh !important;
+            height: var(--app-height, 100dvh) !important;
             width: 100% !important;
             position: relative !important;
             overflow: hidden !important;
@@ -1250,11 +1250,10 @@ export class SessionView extends LitElement {
           /* Mobile: when the quick keys are up, shrink the grid so the terminal reserves
              space for the fixed quick-keys bar instead of being covered (the bottom rows
              were hidden and the top became unreachable). We subtract ONLY the quick-keys
-             height — NOT the keyboard height — because the viewport uses
-             interactive-widget=resizes-content, so 100dvh already shrinks with the iOS
-             keyboard; subtracting it again double-counted and left a large empty gap. */
+             height — NOT the keyboard height — because --app-height already tracks the
+             visual viewport above the iOS keyboard. */
           .session-view-grid[data-keyboard-visible="true"] {
-            height: calc(100dvh - var(--quickkeys-height, 0px)) !important;
+            height: calc(var(--app-height, 100dvh) - var(--quickkeys-height, 0px)) !important;
           }
 
           .session-header-area {

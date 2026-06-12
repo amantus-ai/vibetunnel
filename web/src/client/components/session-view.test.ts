@@ -1068,6 +1068,17 @@ describe('SessionView', () => {
       expect(terminalElement.scrollToBottom).not.toHaveBeenCalled();
     });
 
+    it('should size the mobile grid from the tracked visual viewport height', () => {
+      const styles = Array.from(element.querySelectorAll('style'))
+        .map((style) => style.textContent ?? '')
+        .join('\n');
+
+      expect(styles).toContain('height: var(--app-height, 100dvh) !important;');
+      expect(styles).toContain(
+        'height: calc(var(--app-height, 100dvh) - var(--quickkeys-height, 0px)) !important;'
+      );
+    });
+
     it.skip('should properly calculate terminal height with keyboard and quick keys', {
       timeout: 10000,
     }, async () => {
