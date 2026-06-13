@@ -83,6 +83,12 @@ export class InlineEdit extends LitElement {
       border-color: rgb(var(--color-primary));
     }
 
+    @media (max-width: 639px) {
+      input {
+        font-size: 16px;
+      }
+    }
+
     .action-buttons {
       display: flex;
       gap: 0.25rem;

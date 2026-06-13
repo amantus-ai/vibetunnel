@@ -30,6 +30,7 @@ describe('SessionHeader', () => {
 
   async function renderHeader(options: {
     isMobile: boolean;
+    sessionName?: string;
     showBackButton?: boolean;
     showSidebarToggle?: boolean;
     sidebarCollapsed?: boolean;
@@ -38,7 +39,10 @@ describe('SessionHeader', () => {
   }): Promise<SessionHeader> {
     const element = await fixture<SessionHeader>(html`
       <session-header
-        .session=${createMockSession({ id: 'header-controls' })}
+        .session=${createMockSession({
+          id: 'header-controls',
+          name: options.sessionName,
+        })}
         .isMobile=${options.isMobile}
         .showBackButton=${options.showBackButton ?? false}
         .showSidebarToggle=${options.showSidebarToggle ?? false}
@@ -101,5 +105,25 @@ describe('SessionHeader', () => {
     expect(backButton?.textContent?.trim()).toBe('Back');
     expect(backButton?.classList.contains('md:w-auto')).toBe(true);
     expect(backButton?.classList.contains('md:h-auto')).toBe(true);
+  });
+
+  it('shows an ellipsized title on mobile while keeping secondary details desktop-only', async () => {
+    const sessionName =
+      'Issue 516 iPhone session title that is intentionally very long to verify truncation';
+    const element = await renderHeader({ isMobile: true, sessionName });
+    const titleContainer = element.querySelector<HTMLElement>(
+      '[data-testid="session-title-container"]'
+    );
+    const details = element.querySelector<HTMLElement>('[data-testid="session-details"]');
+    const inlineEdit = titleContainer?.querySelector('inline-edit') as
+      | (HTMLElement & { value: string })
+      | null;
+
+    expect(titleContainer).toBeTruthy();
+    expect(titleContainer?.classList.contains('hidden')).toBe(false);
+    expect(titleContainer?.classList.contains('flex-1')).toBe(true);
+    expect(inlineEdit?.value).toBe(sessionName);
+    expect(details?.classList.contains('hidden')).toBe(true);
+    expect(details?.classList.contains('sm:flex')).toBe(true);
   });
 });

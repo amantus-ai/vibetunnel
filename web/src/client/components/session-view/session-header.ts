@@ -268,7 +268,10 @@ export class SessionHeader extends LitElement {
               `
               : ''
           }
-          <div class="text-primary min-w-0 flex-1 overflow-hidden hidden sm:block">
+          <div
+            class="text-primary min-w-0 flex-1 overflow-hidden"
+            data-testid="session-title-container"
+          >
             <div class="text-bright font-medium text-xs sm:text-sm min-w-0 overflow-hidden">
               <div class="flex items-center gap-1 min-w-0 overflow-hidden" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
                 <inline-edit
@@ -328,7 +331,10 @@ export class SessionHeader extends LitElement {
                 }
               </div>
             </div>
-            <div class="text-xs opacity-75 mt-0.5 flex items-center gap-2 min-w-0 overflow-hidden">
+            <div
+              class="text-xs opacity-75 mt-0.5 hidden sm:flex items-center gap-2 min-w-0 overflow-hidden"
+              data-testid="session-details"
+            >
               <clickable-path
                 class="min-w-0 flex-1 truncate"
                 .path=${this.session.workingDir}

@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Show long session titles with ellipsis in the compact iPhone header instead of hiding them entirely. (#516)
 - Report Tailscale Serve as running after its background setup command exits successfully, instead of leaving the macOS app stuck on “Starting…” (#556)
 - Preserve the configured Tailscale Serve port when reset fails instead of hiding a persistent non-default proxy.
 - Guide macOS terminal-test permission failures to the correct Automation or Accessibility settings pane (#554)

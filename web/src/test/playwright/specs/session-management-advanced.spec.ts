@@ -121,17 +121,17 @@ test.describe('Advanced Session Management', () => {
     // Create a tracked session
     await sessionManager.createTrackedSession();
 
-    // Should see copy button for path
-    await expect(page.locator('[title="Click to copy path"]')).toBeVisible();
+    const headerPath = page.locator('session-header').getByTitle('Click to copy path');
+    await expect(headerPath).toBeVisible();
 
     // Click to copy path
-    await page.click('[title="Click to copy path"]');
+    await headerPath.click();
 
     // Visual feedback would normally appear (toast notification)
     // We can't test clipboard content directly in Playwright
 
     // Verify the clickable-path component exists and has the right behavior
-    const clickablePath = page.locator('clickable-path').first();
+    const clickablePath = page.locator('session-header clickable-path');
     await expect(clickablePath).toBeVisible();
   });
 

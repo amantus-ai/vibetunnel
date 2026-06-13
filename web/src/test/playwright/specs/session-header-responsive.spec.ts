@@ -30,10 +30,13 @@ test.describe('mobile session header', () => {
   });
 
   let sessionManager: TestSessionManager;
+  let sessionName: string;
 
   test.beforeEach(async ({ page }) => {
     sessionManager = new TestSessionManager(page, 'header-mobile');
-    await sessionManager.createTrackedSession();
+    sessionName =
+      'Issue 516 iPhone session title that is intentionally very long to verify truncation and visibility';
+    await sessionManager.createTrackedSession(sessionName);
     await expect(page.locator('session-header')).toBeVisible();
   });
 
@@ -49,6 +52,8 @@ test.describe('mobile session header', () => {
       page.getByRole('button', { name: 'Switch to Chat Mode', exact: true }),
       page.getByRole('button', { name: 'More actions menu', exact: true }),
     ];
+    const titleContainer = page.getByTestId('session-title-container');
+    const titleText = titleContainer.locator('inline-edit').locator('.display-text');
 
     for (const viewport of [
       { width: 700, height: 500 },
@@ -66,7 +71,44 @@ test.describe('mobile session header', () => {
         await expect(control).toBeVisible();
         await expectInsideViewport(page, control);
       }
+
+      await expect(titleContainer).toBeVisible();
+      await expectInsideViewport(page, titleContainer, 0);
+      await expect(titleText).toHaveAttribute('title', sessionName);
     }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const inlineEdit = titleContainer.locator('inline-edit');
+    await inlineEdit.locator('.edit-icon').click();
+    const titleInput = inlineEdit.locator('input');
+    await expect(titleInput).toBeVisible();
+    await expect
+      .poll(() =>
+        titleInput.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
+      )
+      .toBeGreaterThanOrEqual(16);
+    await inlineEdit.locator('.cancel').click();
+    for (const control of headerControls) {
+      await expectInsideViewport(page, control);
+    }
+
+    await page.setViewportSize({ width: 360, height: 800 });
+    await expect
+      .poll(() =>
+        titleText.evaluate((element) => {
+          const styles = getComputedStyle(element);
+          return {
+            isTruncated: element.scrollWidth > element.clientWidth,
+            textOverflow: styles.textOverflow,
+            whiteSpace: styles.whiteSpace,
+          };
+        })
+      )
+      .toEqual({
+        isTruncated: true,
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      });
 
     await page.setViewportSize({ width: 434, height: 965 });
     const menuButton = page.getByRole('button', { name: 'More actions menu', exact: true });
