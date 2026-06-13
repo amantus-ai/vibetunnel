@@ -18,6 +18,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Let force-terminated `vt` sessions exit instead of rerunning commands outside VibeTunnel, including suspended jobs (reported by [@cameroncooke](https://github.com/cameroncooke)) (#278)
 - Show long session titles with ellipsis in the compact iPhone header instead of hiding them entirely. (#516)
 - Report Tailscale Serve as running after its background setup command exits successfully, instead of leaving the macOS app stuck on “Starting…” (#556)
 - Preserve the configured Tailscale Serve port when reset fails instead of hiding a persistent non-default proxy.
@@ -62,6 +63,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@cameroncooke](https://github.com/cameroncooke) for reporting stuck `vt` processes after suspending terminal jobs.
 - Thanks [@ndraiman](https://github.com/ndraiman) for proposing customizable mobile terminal quick-key layouts.
 - Thanks [@manmal](https://github.com/manmal) and [@hjanuschka](https://github.com/hjanuschka) for proposing and originally implementing clickable terminal shortcuts.
 - Thanks [@MrMage](https://github.com/MrMage) and [@gioneill](https://github.com/gioneill) for reporting and investigating repetitive update onboarding.

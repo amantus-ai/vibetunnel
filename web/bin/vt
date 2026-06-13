@@ -385,13 +385,33 @@ EOF
 exec_with_fallback() {
     # Save the command for potential fallback
     local SAVED_CMD=("$@")
+    local STARTED_DIR=""
+    local STARTED_FILE=""
+    local FORWARDER_STARTED=false
+
+    STARTED_DIR=$(mktemp -d "${TMPDIR:-/tmp}/vibetunnel-fwd-started.XXXXXX" 2>/dev/null || true)
+    if [ -n "$STARTED_DIR" ]; then
+        STARTED_FILE="$STARTED_DIR/started"
+    fi
     
     # Try running with VibeTunnel
     local START_TIME=$(date +%s%N 2>/dev/null || echo "0")  # nanoseconds if available
     
     # Run the command (without exec to capture exit code)
-    "$@"
+    if [ -n "$STARTED_FILE" ]; then
+        VIBETUNNEL_FWD_STARTED_FILE="$STARTED_FILE" "$@"
+    else
+        "$@"
+    fi
     local EXIT_CODE=$?
+
+    if [ -n "$STARTED_FILE" ] && [ -e "$STARTED_FILE" ]; then
+        FORWARDER_STARTED=true
+    fi
+    if [ -n "$STARTED_FILE" ]; then
+        rm -f "$STARTED_FILE"
+        rmdir "$STARTED_DIR" 2>/dev/null || true
+    fi
     
     local END_TIME=$(date +%s%N 2>/dev/null || echo "1000000000")  # 1 second if date doesn't support nanoseconds
     
@@ -401,8 +421,9 @@ exec_with_fallback() {
         DURATION=$(( (END_TIME - START_TIME) / 1000000 ))
     fi
     
-    # Check if it was killed by macOS (exit code 137 or very quick failure)
-    if [[ $EXIT_CODE -eq 137 ]] || ([[ $EXIT_CODE -ne 0 ]] && [[ $DURATION -lt 100 ]]); then
+    # Runtime SIGKILL also exits 137, including force-termination from the web UI.
+    # Only use the direct fallback when the forwarder never reached its entrypoint.
+    if [ -n "$STARTED_FILE" ] && [[ "$FORWARDER_STARTED" != "true" ]] && { [[ $EXIT_CODE -eq 137 ]] || ([[ $EXIT_CODE -ne 0 ]] && [[ $DURATION -lt 100 ]]); }; then
         # Log the error
         echo "[vt] VibeTunnel binary killed by macOS (exit code: $EXIT_CODE). Running command directly." >&2
         

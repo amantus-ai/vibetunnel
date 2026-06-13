@@ -132,6 +132,8 @@ fn handleSignal(sig: c_int) callconv(.c) void {
 }
 
 pub fn main() !void {
+    markForwarderStarted();
+
     var gpa = std.heap.GeneralPurposeAllocator(.{ .thread_safe = true }){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -372,6 +374,18 @@ pub fn main() !void {
     std.process.exit(@intCast(exit_info.exit_code));
 }
 
+fn markForwarderStarted() void {
+    const marker = std.posix.getenv("VIBETUNNEL_FWD_STARTED_FILE") orelse return;
+    const marker_path = std.mem.sliceTo(marker, 0);
+    var file = std.fs.cwd().createFile(marker_path, .{
+        .exclusive = true,
+        .truncate = false,
+        .read = false,
+        .mode = 0o600,
+    }) catch return;
+    file.close();
+}
+
 fn parseArgs(args: []const []const u8, defaults: EnvDefaults) !ParsedArgs {
     var options = Options{};
     if (defaults.title_mode) |mode| options.title_mode = mode;
@@ -467,7 +481,6 @@ fn isTruthy(value: []const u8) bool {
     return std.ascii.eqlIgnoreCase(value, "1") or std.ascii.eqlIgnoreCase(value, "true");
 }
 
-
 fn getHome() []const u8 {
     if (std.posix.getenv("HOME")) |val| return std.mem.sliceTo(val, 0);
     return "";
@@ -562,6 +575,7 @@ fn buildExecEnv(allocator: std.mem.Allocator, command: []const []const u8, sessi
     if (command.len == 0) return error.InvalidArguments;
     var env_map = try std.process.getEnvMap(allocator);
     defer env_map.deinit();
+    _ = env_map.remove("VIBETUNNEL_FWD_STARTED_FILE");
     env_map.put("TERM", "xterm-256color") catch {};
     env_map.put("VIBETUNNEL_SESSION_ID", session_id) catch {};
 
