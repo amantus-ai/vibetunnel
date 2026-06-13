@@ -242,5 +242,35 @@ describe('TerminalQuickKeys', () => {
       );
       component.remove();
     });
+
+    it.each([
+      ['CtrlExpand', 'Ctrl+D'],
+      ['F', 'F1'],
+    ] as const)('keeps the %s toggle reachable when row 2 is expanded', async (toggle, expandedKey) => {
+      expect(
+        saveQuickKeysLayout([
+          ['Escape', 'Control', 'Tab'],
+          [toggle, 'Home', 'Paste'],
+        ])
+      ).toBe(true);
+      document.body.append(component);
+      await component.updateComplete;
+
+      component.handleKeyPress(toggle, false, false, true);
+      await component.updateComplete;
+
+      const collapseButton = component.querySelector<HTMLButtonElement>(`[data-key="${toggle}"]`);
+      expect(collapseButton).not.toBeNull();
+      expect(component.querySelector(`[data-key="${expandedKey}"]`)).not.toBeNull();
+
+      collapseButton?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, composed: true, detail: 1 })
+      );
+      await component.updateComplete;
+
+      expect(component.querySelector(`[data-key="${expandedKey}"]`)).toBeNull();
+      expect(component.querySelector('[data-key="Home"]')).not.toBeNull();
+      component.remove();
+    });
   });
 });

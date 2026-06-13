@@ -330,6 +330,14 @@ export class TerminalQuickKeys extends LitElement {
     return this.quickKeysLayout.map((row) => row.map((key) => getQuickKeyDefinition(key)));
   }
 
+  private renderExpandedToggle(rows: QuickKeyDefinition[][], key: 'CtrlExpand' | 'F') {
+    const remainsVisible = [rows[0], ...rows.slice(2)].some((row) =>
+      row.some((definition) => definition.key === key)
+    );
+
+    return remainsVisible ? '' : this.renderQuickKey(getQuickKeyDefinition(key));
+  }
+
   private renderQuickKey(definition: QuickKeyDefinition) {
     const { key, label, modifier, combo, arrow, toggle } = definition;
     const activeToggle =
@@ -641,6 +649,7 @@ export class TerminalQuickKeys extends LitElement {
               ? html`
               <div class="flex gap-0.5 ${rows.length > 2 ? 'mb-0.5' : ''}">
                 ${CTRL_SHORTCUTS.map((key) => this.renderAuxiliaryKey(key))}
+                ${this.renderExpandedToggle(rows, 'CtrlExpand')}
                 ${this.renderDoneButton()}
               </div>
             `
@@ -648,6 +657,7 @@ export class TerminalQuickKeys extends LitElement {
                 ? html`
               <div class="flex gap-0.5 ${rows.length > 2 ? 'mb-0.5' : ''}">
                 ${FUNCTION_KEYS.map((key) => this.renderAuxiliaryKey(key))}
+                ${this.renderExpandedToggle(rows, 'F')}
                 ${this.renderDoneButton()}
               </div>
             `
