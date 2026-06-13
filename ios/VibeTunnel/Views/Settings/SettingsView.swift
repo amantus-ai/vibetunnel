@@ -134,6 +134,15 @@ struct GeneralSettingsView: View {
     private var enableLivePreviews = true
     @AppStorage("colorSchemePreference")
     private var colorSchemePreferenceRaw = "system"
+    @State private var openAIAPIKey = ""
+    @State private var hasOpenAIAPIKey = false
+    @State private var voiceInputStatus: VoiceInputStatus?
+    private let voiceInputKeyStore: any VoiceTranscriptionKeyStoring = KeychainService()
+
+    private struct VoiceInputStatus {
+        let message: String
+        let isError: Bool
+    }
 
     enum ColorSchemePreference: String, CaseIterable {
         case system
@@ -276,7 +285,101 @@ struct GeneralSettingsView: View {
                 }
             }
 
+            // Voice Input Section
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("Voice Input")
+                    .font(.headline)
+                    .foregroundColor(Theme.Colors.terminalForeground)
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                    Label("OpenAI transcription", systemImage: "waveform")
+                        .font(Theme.Typography.terminalSystem(size: 14))
+                        .foregroundColor(Theme.Colors.terminalForeground)
+
+                    Text(
+                        "Recordings are sent to OpenAI after you tap Stop, or automatically after 60 seconds. Transcribed text is inserted into the terminal without executing it.")
+                        .font(Theme.Typography.terminalSystem(size: 12))
+                        .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+
+                    SecureField(
+                        self.hasOpenAIAPIKey ? "Replace saved API key" : "OpenAI API key",
+                        text: self.$openAIAPIKey)
+                        .font(Theme.Typography.terminalSystem(size: 14))
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+
+                    HStack {
+                        Button(self.hasOpenAIAPIKey ? "Replace Key" : "Save Key") {
+                            self.saveOpenAIAPIKey()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Theme.Colors.primaryAccent)
+                        .disabled(self.openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                        if self.hasOpenAIAPIKey {
+                            Button("Remove Key", role: .destructive) {
+                                self.removeOpenAIAPIKey()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        Spacer()
+
+                        Link(
+                            "Create Key",
+                            destination: URL(string: "https://platform.openai.com/api-keys")!)
+                            .font(Theme.Typography.terminalSystem(size: 12))
+                    }
+
+                    if let voiceInputStatus {
+                        Text(voiceInputStatus.message)
+                            .font(Theme.Typography.terminalSystem(size: 12))
+                            .foregroundColor(
+                                voiceInputStatus.isError ? Theme.Colors.errorAccent : Theme.Colors.successAccent)
+                    }
+                }
+                .padding()
+                .background(Theme.Colors.cardBackground)
+                .cornerRadius(Theme.CornerRadius.card)
+            }
+
             Spacer()
+        }
+        .task {
+            self.refreshOpenAIAPIKeyStatus()
+        }
+    }
+
+    private func refreshOpenAIAPIKeyStatus() {
+        self.hasOpenAIAPIKey = ((try? self.voiceInputKeyStore.loadPassword(
+            for: VoiceTranscriptionConfiguration.apiKeyAccount))?.isEmpty == false)
+    }
+
+    private func saveOpenAIAPIKey() {
+        let apiKey = self.openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !apiKey.isEmpty else { return }
+
+        do {
+            try self.voiceInputKeyStore.savePassword(
+                apiKey,
+                for: VoiceTranscriptionConfiguration.apiKeyAccount)
+            self.openAIAPIKey = ""
+            self.hasOpenAIAPIKey = true
+            self.voiceInputStatus = VoiceInputStatus(message: "API key saved in Keychain.", isError: false)
+        } catch {
+            self.voiceInputStatus = VoiceInputStatus(message: "Could not save the API key.", isError: true)
+        }
+    }
+
+    private func removeOpenAIAPIKey() {
+        do {
+            try self.voiceInputKeyStore.deletePassword(for: VoiceTranscriptionConfiguration.apiKeyAccount)
+            self.openAIAPIKey = ""
+            self.hasOpenAIAPIKey = false
+            self.voiceInputStatus = VoiceInputStatus(message: "API key removed.", isError: false)
+        } catch {
+            self.voiceInputStatus = VoiceInputStatus(message: "Could not remove the API key.", isError: true)
         }
     }
 }

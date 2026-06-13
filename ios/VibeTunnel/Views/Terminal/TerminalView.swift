@@ -28,6 +28,7 @@ struct TerminalView: View {
     @State private var currentTerminalWidth: TerminalWidth = .unlimited
     @State private var showingFullscreenInput = false
     @State private var showingCtrlKeyGrid = false
+    @State private var voiceInputViewModel = VoiceInputViewModel()
     @FocusState private var isInputFocused: Bool
 
     init(session: Session) {
@@ -54,6 +55,7 @@ struct TerminalView: View {
             self.isInputFocused = true
         }
         .onDisappear {
+            self.voiceInputViewModel.cancelRecording()
             self.viewModel.disconnect()
         }
         .sheet(isPresented: self.$showingFontSizeSheet) {
@@ -141,6 +143,26 @@ struct TerminalView: View {
             withAnimation(Theme.Animation.smooth) {
                 self.showScrollToBottom = !newValue
             }
+        }
+        .onChange(of: self.voiceInputViewModel.completedTranscript) { _, completedTranscript in
+            guard let completedTranscript else { return }
+            self.viewModel.sendInput(completedTranscript.text)
+            self.voiceInputViewModel.consumeCompletedTranscript()
+        }
+        .alert(
+            "Voice Input",
+            isPresented: Binding(
+                get: { self.voiceInputViewModel.errorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        self.voiceInputViewModel.clearError()
+                    }
+                })) {
+            Button("OK") {
+                self.voiceInputViewModel.clearError()
+            }
+        } message: {
+            Text(self.voiceInputViewModel.errorMessage ?? "")
         }
         // iPad keyboard shortcuts
         .onKeyPress(keys: ["o"]) { press in
@@ -569,7 +591,8 @@ struct TerminalView: View {
                     },
                     onRawInput: { input in
                         self.viewModel.sendInput(input)
-                    })
+                    },
+                    voiceInputViewModel: self.voiceInputViewModel)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
