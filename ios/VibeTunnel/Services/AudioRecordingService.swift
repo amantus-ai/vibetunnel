@@ -28,7 +28,7 @@ final class AudioRecordingService: NSObject, AudioRecording {
         }
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try audioSession.setCategory(.record, mode: .measurement)
         try audioSession.setActive(true)
 
         let url = FileManager.default.temporaryDirectory
