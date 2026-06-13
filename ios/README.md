@@ -9,6 +9,7 @@
 - **Full terminal emulation** using ghostty-web (WASM + canvas)
 - **Real-time session management** with WebSocket buffer streaming
 - **Keyboard toolbar** with special keys (arrows, ESC, CTRL combinations)
+- **OpenAI voice input** with tap-to-record transcription for terminal commands
 - **Font size adjustment** with live preview
 - **Haptic feedback** throughout the interface
 - **Session operations**: Create, kill, cleanup sessions
@@ -127,6 +128,7 @@ VibeTunnel/
 3. **Use Terminal**
    - Full terminal emulation with ghostty-web
    - Special keys toolbar for mobile input
+   - Add an OpenAI API key under Settings → General → Voice Input, then tap the microphone in the keyboard toolbar to insert transcribed text
    - Pinch to zoom or use menu for font size
    - Long press for copy/paste
 

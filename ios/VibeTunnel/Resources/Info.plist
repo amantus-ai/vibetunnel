@@ -121,6 +121,8 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>VibeTunnel uses the local network to discover servers on your network.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VibeTunnel records audio when you use voice input so it can transcribe text for the terminal.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_vibetunnel._tcp</string>

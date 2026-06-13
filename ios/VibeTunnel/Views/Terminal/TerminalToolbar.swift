@@ -8,17 +8,20 @@ struct TerminalToolbar: View {
     let onSpecialKey: (TerminalInput.SpecialKey) -> Void
     let onDismissKeyboard: () -> Void
     let onRawInput: ((String) -> Void)?
+    let voiceInputViewModel: VoiceInputViewModel?
     @State private var showMoreKeys = false
     @State private var showAdvancedKeyboard = false
 
     init(
         onSpecialKey: @escaping (TerminalInput.SpecialKey) -> Void,
         onDismissKeyboard: @escaping () -> Void,
-        onRawInput: ((String) -> Void)? = nil)
+        onRawInput: ((String) -> Void)? = nil,
+        voiceInputViewModel: VoiceInputViewModel? = nil)
     {
         self.onSpecialKey = onSpecialKey
         self.onDismissKeyboard = onDismissKeyboard
         self.onRawInput = onRawInput
+        self.voiceInputViewModel = voiceInputViewModel
     }
 
     var body: some View {
@@ -75,6 +78,10 @@ struct TerminalToolbar: View {
                 }
 
                 Spacer()
+
+                if let voiceInputViewModel {
+                    self.voiceInputButton(viewModel: voiceInputViewModel)
+                }
 
                 // Advanced keyboard
                 ToolbarButton(systemImage: "keyboard") {
@@ -257,6 +264,52 @@ struct TerminalToolbar: View {
             AdvancedKeyboardView(isPresented: self.$showAdvancedKeyboard) { input in
                 self.onRawInput?(input)
             }
+        }
+    }
+
+    private func voiceInputButton(viewModel: VoiceInputViewModel) -> some View {
+        ToolbarButton(
+            systemImage: self.voiceInputIcon(for: viewModel.state),
+            isActive: viewModel.state == .recording)
+        {
+            HapticFeedback.impact(viewModel.state == .recording ? .medium : .light)
+            Task {
+                await viewModel.toggleRecording()
+            }
+        }
+        .disabled(viewModel.state == .preparing || viewModel.state == .transcribing)
+        .overlay {
+            if viewModel.state == .preparing || viewModel.state == .transcribing {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .accessibilityLabel(self.voiceInputAccessibilityLabel(for: viewModel.state))
+    }
+
+    private func voiceInputIcon(for state: VoiceInputViewModel.State) -> String {
+        switch state {
+        case .idle:
+            "mic"
+        case .preparing:
+            "mic"
+        case .recording:
+            "stop.fill"
+        case .transcribing:
+            "mic"
+        }
+    }
+
+    private func voiceInputAccessibilityLabel(for state: VoiceInputViewModel.State) -> String {
+        switch state {
+        case .idle:
+            "Start voice input"
+        case .preparing:
+            "Preparing voice input"
+        case .recording:
+            "Stop and transcribe voice input"
+        case .transcribing:
+            "Transcribing voice input"
         }
     }
 }

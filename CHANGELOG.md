@@ -8,6 +8,7 @@
 - Recognize Augment Code's Auggie CLI as an AI assistant, add it to default Quick Start commands, and document setup (requested by [@rishitank](https://github.com/rishitank)) (#526)
 - Expose a stable, labeled terminal input node for browser automation and accessibility tools (reported by [@bharath2020](https://github.com/bharath2020)) (#339)
 - Show line insertion and deletion counts alongside file changes in web session Git status badges (thanks [@abhinavgautam01](https://github.com/abhinavgautam01)) (#48)
+- Add OpenAI BYOK voice transcription to the iOS terminal keyboard toolbar, with secure Keychain storage and review-before-execution input (via [@jblwilliams](https://github.com/jblwilliams)) (#523)
 - Let mobile users reorder, hide, and choose layouts for terminal quick keys, with browser-local persistence and an unchanged default layout (via [@ndraiman](https://github.com/ndraiman)) (#564)
 - Restore clickable Ctrl+letter shortcuts in the Ghostty terminal renderer (reported by [@manmal](https://github.com/manmal), based on the original implementation by [@hjanuschka](https://github.com/hjanuschka)) (#51)
 - Show returning users only the CLI maintenance page after updates, while keeping the full onboarding flow available manually (reported by [@MrMage](https://github.com/MrMage), with earlier investigation by [@gioneill](https://github.com/gioneill)) (#411)
@@ -80,6 +81,7 @@
 
 ### 👥 Contributors
 - Thanks [@abhinavgautam01](https://github.com/abhinavgautam01) for adding web session Git line-change counts.
+- Thanks [@jblwilliams](https://github.com/jblwilliams) for the original iOS voice-transcription implementation.
 - Thanks [@cameroncooke](https://github.com/cameroncooke) for reporting stuck `vt` processes after suspending terminal jobs.
 - Thanks [@ndraiman](https://github.com/ndraiman) for proposing customizable mobile terminal quick-key layouts.
 - Thanks [@manmal](https://github.com/manmal) and [@hjanuschka](https://github.com/hjanuschka) for proposing and originally implementing clickable terminal shortcuts.

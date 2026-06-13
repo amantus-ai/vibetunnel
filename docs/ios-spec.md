@@ -55,6 +55,7 @@ VibeTunnel iOS is a native SwiftUI application that provides a beautiful, native
 - **Input/Output**:
   - Native iOS keyboard integration
   - Special keys toolbar (arrows, escape, tab, ctrl)
+  - Optional OpenAI BYOK voice transcription that inserts text without executing it
   - Copy/paste support
   - URL detection and tap-to-open
   - Smooth scrolling with momentum
