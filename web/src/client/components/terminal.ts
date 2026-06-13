@@ -11,6 +11,7 @@
 import { FitAddon, Ghostty, Terminal as GhosttyTerminal } from 'ghostty-web';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { KeyboardShortcutLinkProvider } from '../utils/keyboard-shortcut-link-provider.js';
 import { createLogger } from '../utils/logger.js';
 import { TERMINAL_FONT_FAMILY, TERMINAL_IDS } from '../utils/terminal-constants.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
@@ -515,6 +516,7 @@ export class Terminal extends LitElement {
       // Fresh mount
       this.container.innerHTML = '';
       term.open(this.container);
+      term.registerLinkProvider(new KeyboardShortcutLinkProvider(term, this.handleShortcutClick));
 
       this.terminal = term;
       this.fitAddon = fitAddon;
@@ -552,6 +554,17 @@ export class Terminal extends LitElement {
   private handleScrollToBottom = () => {
     this.followCursorEnabled = true;
     this.scrollToBottom();
+  };
+
+  private handleShortcutClick = (controlCharacter: string) => {
+    if (this.disableClick) return;
+
+    this.dispatchEvent(
+      new CustomEvent('terminal-input', {
+        detail: { text: controlCharacter },
+        bubbles: true,
+      })
+    );
   };
 
   private handleClick = (e: MouseEvent) => {

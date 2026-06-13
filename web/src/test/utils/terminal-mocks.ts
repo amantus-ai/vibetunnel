@@ -88,6 +88,8 @@ export class MockTerminal {
     // no-op for tests
   });
 
+  registerLinkProvider = vi.fn();
+
   open = vi.fn((element: HTMLElement) => {
     element.appendChild(this.element);
   });

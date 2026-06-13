@@ -101,6 +101,40 @@ describe('Terminal', () => {
       expect(element.getAttribute('data-ready')).toBe('true');
     });
 
+    it('registers clickable shortcuts that dispatch terminal input', () => {
+      if (!mockTerminal) return;
+
+      expect(mockTerminal.registerLinkProvider).toHaveBeenCalledOnce();
+      const provider = mockTerminal.registerLinkProvider.mock.calls[0][0] as {
+        provideLinks(
+          row: number,
+          callback: (
+            links:
+              | Array<{
+                  activate(event: MouseEvent): void;
+                }>
+              | undefined
+          ) => void
+        ): void;
+      };
+
+      mockTerminal.buffer.active.getLine.mockReturnValue({
+        translateToString: vi.fn(() => 'Ctrl+R'),
+        length: 6,
+        getCell: vi.fn((column: number) => ({
+          getChars: () => 'Ctrl+R'[column] ?? '',
+        })),
+      });
+
+      const inputHandler = vi.fn();
+      element.addEventListener('terminal-input', inputHandler);
+
+      provider.provideLinks(0, (links) => links?.[0].activate(new MouseEvent('click')));
+
+      expect(inputHandler).toHaveBeenCalledOnce();
+      expect((inputHandler.mock.calls[0][0] as CustomEvent).detail).toEqual({ text: '\x12' });
+    });
+
     it('should handle custom dimensions', async () => {
       const customElement = await fixture<Terminal>(html`
         <vibe-terminal session-id="test-789" cols="120" rows="40" font-size="16"> </vibe-terminal>
