@@ -12,6 +12,7 @@ import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { VERSION } from '../version.js';
+import './quick-keys-editor.js';
 
 const logger = createLogger('settings');
 
@@ -37,6 +38,7 @@ export class Settings extends LitElement {
   @state() private repositoryBasePath = DEFAULT_REPOSITORY_BASE_PATH;
   @state() private repositoryCount = 0;
   @state() private isDiscoveringRepositories = false;
+  @state() private showQuickKeysEditor = false;
 
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
@@ -81,6 +83,7 @@ export class Settings extends LitElement {
         this.refreshNotificationState();
       } else {
         document.removeEventListener('keydown', this.handleKeyDown);
+        this.showQuickKeysEditor = false;
       }
     }
 
@@ -509,6 +512,12 @@ export class Settings extends LitElement {
           </div>
         </div>
       </div>
+      <quick-keys-editor
+        .visible=${this.showQuickKeysEditor}
+        @close=${() => {
+          this.showQuickKeysEditor = false;
+        }}
+      ></quick-keys-editor>
     `;
   }
 
@@ -728,6 +737,26 @@ export class Settings extends LitElement {
               placeholder="~/"
               class="input-field py-2 text-sm flex-1"
             />
+          </div>
+        </div>
+
+        <div class="p-4 bg-bg-tertiary rounded-lg border border-border/50">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <label class="text-primary font-medium">Mobile Quick Keys</label>
+              <p class="text-muted text-xs mt-1">
+                Reorder or hide terminal shortcuts on this browser.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-secondary text-xs px-3 py-2 flex-shrink-0"
+              @click=${() => {
+                this.showQuickKeysEditor = true;
+              }}
+            >
+              Customize
+            </button>
           </div>
         </div>
       </div>

@@ -1,6 +1,12 @@
 // @vitest-environment happy-dom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { restoreLocalStorage, setupLocalStorageMock } from '../../test/utils/component-helpers.js';
+import {
+  COMPACT_QUICK_KEYS_LAYOUT,
+  DEFAULT_QUICK_KEYS_LAYOUT,
+  saveQuickKeysLayout,
+} from '../utils/quick-keys-layout.js';
 import { TerminalQuickKeys } from './terminal-quick-keys.js';
 
 // Define interface for private methods we need to test
@@ -22,10 +28,16 @@ describe('TerminalQuickKeys', () => {
   let mockOnKeyPress: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    setupLocalStorageMock();
     component = new TerminalQuickKeys() as TerminalQuickKeysPrivate;
     mockOnKeyPress = vi.fn();
     component.onKeyPress = mockOnKeyPress;
     component.visible = true;
+  });
+
+  afterEach(() => {
+    component.remove();
+    restoreLocalStorage();
   });
 
   describe('Option key chord system', () => {
@@ -186,6 +198,48 @@ describe('TerminalQuickKeys', () => {
 
       expect(arrowKey?.classList.contains('px-1.5')).toBe(true);
       expect(arrowKey?.classList.contains('py-2.5')).toBe(true);
+      component.remove();
+    });
+  });
+
+  describe('custom layouts', () => {
+    it('keeps the existing three-row layout as the default', async () => {
+      document.body.append(component);
+      await component.updateComplete;
+
+      const renderedKeys = Array.from(component.querySelectorAll<HTMLElement>('[data-key]')).map(
+        (element) => element.dataset.key
+      );
+
+      expect(renderedKeys).toEqual([
+        ...DEFAULT_QUICK_KEYS_LAYOUT[0],
+        ...DEFAULT_QUICK_KEYS_LAYOUT[1],
+        'Done',
+        ...DEFAULT_QUICK_KEYS_LAYOUT[2],
+      ]);
+      component.remove();
+    });
+
+    it('updates an open keyboard when a valid layout is saved', async () => {
+      document.body.append(component);
+      await component.updateComplete;
+
+      expect(saveQuickKeysLayout(COMPACT_QUICK_KEYS_LAYOUT)).toBe(true);
+      await component.updateComplete;
+
+      const renderedKeys = Array.from(component.querySelectorAll<HTMLElement>('[data-key]')).map(
+        (element) => element.dataset.key
+      );
+
+      expect(renderedKeys).toEqual([
+        ...COMPACT_QUICK_KEYS_LAYOUT[0],
+        ...COMPACT_QUICK_KEYS_LAYOUT[1],
+        'Done',
+      ]);
+      expect(component.querySelectorAll('[data-key="Done"]')).toHaveLength(1);
+      expect(component.querySelector('[data-key="ArrowUp"]')?.classList.contains('arrow-key')).toBe(
+        true
+      );
       component.remove();
     });
   });

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Let mobile users reorder, hide, and choose layouts for terminal quick keys, with browser-local persistence and an unchanged default layout (via [@ndraiman](https://github.com/ndraiman)) (#564)
 - Restore clickable Ctrl+letter shortcuts in the Ghostty terminal renderer (reported by [@manmal](https://github.com/manmal), based on the original implementation by [@hjanuschka](https://github.com/hjanuschka)) (#51)
 - Show returning users only the CLI maintenance page after updates, while keeping the full onboarding flow available manually (reported by [@MrMage](https://github.com/MrMage), with earlier investigation by [@gioneill](https://github.com/gioneill)) (#411)
 - Pin CI actions, runner images, and downloaded build tools to immutable, checksum-verified versions (via [@davisbuilds](https://github.com/davisbuilds)) (#616)
@@ -61,6 +62,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@ndraiman](https://github.com/ndraiman) for proposing customizable mobile terminal quick-key layouts.
 - Thanks [@manmal](https://github.com/manmal) and [@hjanuschka](https://github.com/hjanuschka) for proposing and originally implementing clickable terminal shortcuts.
 - Thanks [@MrMage](https://github.com/MrMage) and [@gioneill](https://github.com/gioneill) for reporting and investigating repetitive update onboarding.
 - Thanks [@davisbuilds](https://github.com/davisbuilds) for hardening CI workflows and build-tool bootstrap paths.

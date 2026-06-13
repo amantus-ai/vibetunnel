@@ -24,6 +24,10 @@ VibeTunnel operates in two keyboard capture modes:
 
 Press Escape twice within 500ms to toggle between capture modes.
 
+## Mobile Quick Keys
+
+On touch devices, open **Settings → Mobile Quick Keys → Customize** to reorder or hide the terminal shortcut buttons. VibeTunnel includes Default and Compact layouts, stores the selected layout in the current browser, and keeps the Done button fixed so the software keyboard can always be dismissed.
+
 ## Critical Browser Shortcuts (Always Available)
 
 These shortcuts always work, regardless of keyboard capture state:
