@@ -1,11 +1,37 @@
 import SwiftUI
 
+enum WelcomePresentationMode: Equatable {
+    case full
+    case cliMaintenance
+
+    static func automatic(storedWelcomeVersion: Int) -> Self {
+        storedWelcomeVersion == 0 ? .full : .cliMaintenance
+    }
+
+    var pageCount: Int {
+        switch self {
+        case .full:
+            9
+        case .cliMaintenance:
+            1
+        }
+    }
+
+    var showsPageIndicators: Bool {
+        self == .full
+    }
+
+    var opensSettingsOnFinish: Bool {
+        self == .full
+    }
+}
+
 /// Welcome onboarding view for first-time users.
 ///
-/// Presents a multi-page onboarding experience that introduces VibeTunnel's features,
+/// Presents either the full onboarding experience or the CLI maintenance page used
+/// for returning users after an update. The full flow introduces VibeTunnel's features,
 /// guides through CLI installation, requests AppleScript permissions, and explains
-/// dashboard security best practices. The view tracks completion state to ensure
-/// it's only shown once.
+/// dashboard security best practices.
 ///
 /// ## Topics
 ///
@@ -21,6 +47,8 @@ import SwiftUI
 /// - ``ControlAgentArmyPageView`` - Managing multiple AI agent sessions
 /// - ``AccessDashboardPageView`` - Remote access instructions
 struct WelcomeView: View {
+    let mode: WelcomePresentationMode
+
     @State private var currentPage = 0
     @Environment(\.dismiss)
     private var dismiss
@@ -32,6 +60,10 @@ struct WelcomeView: View {
 
     private let pageWidth: CGFloat = 640
     private let contentHeight: CGFloat = 468 // Total height minus navigation area
+
+    init(mode: WelcomePresentationMode = .full) {
+        self.mode = mode
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,41 +80,46 @@ struct WelcomeView: View {
             // Scrollable content area
             GeometryReader { _ in
                 HStack(spacing: 0) {
-                    // Page 1: Welcome content (without icon)
-                    WelcomeContentView()
-                        .frame(width: self.pageWidth)
+                    if self.mode == .cliMaintenance {
+                        VTCommandPageView(cliInstaller: self.cliInstaller)
+                            .frame(width: self.pageWidth)
+                    } else {
+                        // Page 1: Welcome content (without icon)
+                        WelcomeContentView()
+                            .frame(width: self.pageWidth)
 
-                    // Page 2: VT Command
-                    VTCommandPageView(cliInstaller: self.cliInstaller)
-                        .frame(width: self.pageWidth)
+                        // Page 2: VT Command
+                        VTCommandPageView(cliInstaller: self.cliInstaller)
+                            .frame(width: self.pageWidth)
 
-                    // Page 3: Request Permissions
-                    RequestPermissionsPageView(isCurrentPage: self.currentPage == 2)
-                        .frame(width: self.pageWidth)
+                        // Page 3: Request Permissions
+                        RequestPermissionsPageView(isCurrentPage: self.currentPage == 2)
+                            .frame(width: self.pageWidth)
 
-                    // Page 4: Select Terminal
-                    SelectTerminalPageView()
-                        .frame(width: self.pageWidth)
+                        // Page 4: Select Terminal
+                        SelectTerminalPageView()
+                            .frame(width: self.pageWidth)
 
-                    // Page 5: Project Folder
-                    ProjectFolderPageView(currentPage: self.$currentPage)
-                        .frame(width: self.pageWidth)
+                        // Page 5: Project Folder
+                        ProjectFolderPageView(currentPage: self.$currentPage)
+                            .frame(width: self.pageWidth)
 
-                    // Page 6: Protect Your Dashboard
-                    ProtectDashboardPageView()
-                        .frame(width: self.pageWidth)
+                        // Page 6: Protect Your Dashboard
+                        ProtectDashboardPageView()
+                            .frame(width: self.pageWidth)
 
-                    // Page 7: Notification Permissions
-                    NotificationPermissionPageView()
-                        .frame(width: self.pageWidth)
+                        // Page 7: Notification Permissions
+                        NotificationPermissionPageView()
+                            .frame(width: self.pageWidth)
 
-                    // Page 8: Control Your Agent Army
-                    ControlAgentArmyPageView()
-                        .frame(width: self.pageWidth)
+                        // Page 8: Control Your Agent Army
+                        ControlAgentArmyPageView()
+                            .frame(width: self.pageWidth)
 
-                    // Page 9: Accessing Dashboard
-                    AccessDashboardPageView()
-                        .frame(width: self.pageWidth)
+                        // Page 9: Accessing Dashboard
+                        AccessDashboardPageView()
+                            .frame(width: self.pageWidth)
+                    }
                 }
                 .offset(x: CGFloat(-self.currentPage) * self.pageWidth)
                 .animation(
@@ -125,19 +162,21 @@ struct WelcomeView: View {
                 Spacer()
 
                 // Page indicators centered
-                HStack(spacing: 8) {
-                    ForEach(0..<9) { index in
-                        Button {
-                            withAnimation {
-                                self.currentPage = index
+                if self.mode.showsPageIndicators {
+                    HStack(spacing: 8) {
+                        ForEach(0..<self.mode.pageCount, id: \.self) { index in
+                            Button {
+                                withAnimation {
+                                    self.currentPage = index
+                                }
+                            } label: {
+                                Circle()
+                                    .fill(index == self.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
+                                    .frame(width: 8, height: 8)
                             }
-                        } label: {
-                            Circle()
-                                .fill(index == self.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
-                                .frame(width: 8, height: 8)
+                            .buttonStyle(.plain)
+                            .pointingHandCursor()
                         }
-                        .buttonStyle(.plain)
-                        .pointingHandCursor()
                     }
                 }
 
@@ -167,7 +206,7 @@ struct WelcomeView: View {
     }
 
     private var buttonTitle: String {
-        self.currentPage == 8 ? "Finish" : "Next"
+        self.currentPage == self.mode.pageCount - 1 ? "Finish" : "Next"
     }
 
     private func handleBackAction() {
@@ -177,7 +216,7 @@ struct WelcomeView: View {
     }
 
     private func handleNextAction() {
-        if self.currentPage < 8 {
+        if self.currentPage < self.mode.pageCount - 1 {
             withAnimation {
                 self.currentPage += 1
             }
@@ -188,10 +227,12 @@ struct WelcomeView: View {
             // Close the window using the SwiftUI dismiss environment
             self.dismiss()
 
-            // Open settings after a delay to ensure the window is fully closed
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(200))
-                SettingsOpener.openSettings()
+            if self.mode.opensSettingsOnFinish {
+                // Open settings after a delay to ensure the window is fully closed
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(200))
+                    SettingsOpener.openSettings()
+                }
             }
         }
     }

@@ -218,7 +218,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if storedWelcomeVersion < AppConstants.currentWelcomeVersion || cliInstaller.isOutdated,
                !isRunningInTests, !isRunningInPreview
             {
-                self?.showWelcomeScreen()
+                self?.showWelcomeScreen(
+                    mode: WelcomePresentationMode.automatic(storedWelcomeVersion: storedWelcomeVersion))
             }
         }
 
@@ -363,15 +364,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Shows the welcome screen
-    private func showWelcomeScreen() {
+    private func showWelcomeScreen(mode: WelcomePresentationMode) {
         // Initialize the welcome window controller (singleton will handle the rest)
         _ = WelcomeWindowController.shared
-        WelcomeWindowController.shared.show()
+        WelcomeWindowController.shared.show(mode: mode)
     }
 
     /// Public method to show welcome screen (can be called from settings)
     static func showWelcomeScreen() {
-        WelcomeWindowController.shared.show()
+        WelcomeWindowController.shared.show(mode: .full)
     }
 
     /// Creates a custom dock menu when the user right-clicks on the dock icon.

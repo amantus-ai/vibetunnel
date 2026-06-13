@@ -13,13 +13,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
     private var windowObserver: NSObjectProtocol?
 
     private init() {
-        let welcomeView = WelcomeView()
-            .environment(SessionMonitor.shared)
-            .environment(ServerManager.shared)
-            .environment(NgrokService.shared)
-            .environment(SystemPermissionManager.shared)
-            .environment(TerminalLauncher.shared)
-        let hostingController = NSHostingController(rootView: welcomeView)
+        let hostingController = NSHostingController(rootView: Self.makeWelcomeView(mode: .full))
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = UIStrings.welcomeTitle
@@ -53,8 +47,12 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func show() {
+    func show(mode: WelcomePresentationMode = .full) {
         guard let window else { return }
+
+        let hostingController = NSHostingController(rootView: Self.makeWelcomeView(mode: mode))
+        hostingController.sizingOptions = [.preferredContentSize]
+        window.contentViewController = hostingController
 
         // Ensure dock icon is visible for window activation
         DockIconManager.shared.temporarilyShowDock()
@@ -81,7 +79,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
 
     @objc
     private func handleShowWelcomeNotification() {
-        self.show()
+        self.show(mode: .full)
     }
 
     // MARK: - NSWindowDelegate
@@ -92,6 +90,15 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
             // Give SwiftUI time to clean up
             try? await Task.sleep(for: .milliseconds(100))
         }
+    }
+
+    private static func makeWelcomeView(mode: WelcomePresentationMode) -> some View {
+        WelcomeView(mode: mode)
+            .environment(SessionMonitor.shared)
+            .environment(ServerManager.shared)
+            .environment(NgrokService.shared)
+            .environment(SystemPermissionManager.shared)
+            .environment(TerminalLauncher.shared)
     }
 }
 
