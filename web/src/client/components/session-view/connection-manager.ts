@@ -114,6 +114,10 @@ export class ConnectionManager {
               gitAheadCount: (e.gitAheadCount as number | undefined) ?? this.session.gitAheadCount,
               gitBehindCount:
                 (e.gitBehindCount as number | undefined) ?? this.session.gitBehindCount,
+              gitInsertionCount:
+                (e.gitInsertionCount as number | undefined) ?? this.session.gitInsertionCount,
+              gitDeletionCount:
+                (e.gitDeletionCount as number | undefined) ?? this.session.gitDeletionCount,
             };
             this.session = updatedSession;
             this.onSessionUpdate(updatedSession);

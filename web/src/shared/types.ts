@@ -87,6 +87,8 @@ export interface SessionInfo {
   gitStagedCount?: number; // Number of staged files
   gitAddedCount?: number; // Number of added files
   gitDeletedCount?: number; // Number of deleted files
+  gitInsertionCount?: number; // Number of inserted lines
+  gitDeletionCount?: number; // Number of deleted lines
   /**
    * Whether this session was spawned from within VibeTunnel itself.
    * Used to distinguish between direct terminal sessions and nested VibeTunnel sessions.

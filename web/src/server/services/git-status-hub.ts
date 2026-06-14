@@ -20,6 +20,8 @@ export type GitStatusHubEvent = {
   gitDeletedCount: number;
   gitAheadCount: number;
   gitBehindCount: number;
+  gitInsertionCount: number;
+  gitDeletionCount: number;
 };
 
 export type GitStatusHubListener = (event: GitStatusHubEvent) => void;
@@ -157,7 +159,9 @@ export class GitStatusHub {
       oldStatus.staged !== newStatus.staged ||
       oldStatus.deleted !== newStatus.deleted ||
       oldStatus.ahead !== newStatus.ahead ||
-      oldStatus.behind !== newStatus.behind
+      oldStatus.behind !== newStatus.behind ||
+      oldStatus.insertions !== newStatus.insertions ||
+      oldStatus.deletions !== newStatus.deletions
     );
   }
 
@@ -174,6 +178,8 @@ export class GitStatusHub {
       gitDeletedCount: status.deleted,
       gitAheadCount: status.ahead,
       gitBehindCount: status.behind,
+      gitInsertionCount: status.insertions,
+      gitDeletionCount: status.deletions,
     });
   }
 

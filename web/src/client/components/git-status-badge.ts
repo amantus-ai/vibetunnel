@@ -2,7 +2,7 @@
  * Git Status Badge Component
  *
  * Displays git repository status information in a compact badge format.
- * Shows counts for added, modified, deleted files, and ahead/behind commits.
+ * Shows counts for changed files, line changes, and ahead/behind commits.
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -47,7 +47,9 @@ export class GitStatusBadge extends LitElement {
     const _hasLocalChanges =
       (this.session?.gitModifiedCount ?? 0) > 0 ||
       (this.session?.gitAddedCount ?? 0) > 0 ||
-      (this.session?.gitDeletedCount ?? 0) > 0;
+      (this.session?.gitDeletedCount ?? 0) > 0 ||
+      (this.session?.gitInsertionCount ?? 0) > 0 ||
+      (this.session?.gitDeletionCount ?? 0) > 0;
 
     const _hasRemoteChanges =
       (this.session?.gitAheadCount ?? 0) > 0 || (this.session?.gitBehindCount ?? 0) > 0;
@@ -59,6 +61,7 @@ export class GitStatusBadge extends LitElement {
       <div class="flex items-center gap-1.5 text-xs">
         ${this.renderBranchInfo()}
         ${this.renderLocalChanges()}
+        ${this.renderLineChanges()}
         ${this.renderRemoteChanges()}
       </div>
     `;
@@ -153,6 +156,38 @@ export class GitStatusBadge extends LitElement {
             ? html`
           <span class="text-red-600 dark:text-red-400" title="Commits behind">
             ↓${behindCount}
+          </span>
+        `
+            : null
+        }
+      </span>
+    `;
+  }
+
+  private renderLineChanges() {
+    if (!this.session) return null;
+
+    const insertionCount = this.session.gitInsertionCount ?? 0;
+    const deletionCount = this.session.gitDeletionCount ?? 0;
+
+    if (insertionCount === 0 && deletionCount === 0) return null;
+
+    return html`
+      <span class="flex items-center gap-0.5">
+        ${
+          insertionCount > 0
+            ? html`
+          <span class="text-green-600 dark:text-green-400" title="Line insertions">
+            +${insertionCount}
+          </span>
+        `
+            : null
+        }
+        ${
+          deletionCount > 0
+            ? html`
+          <span class="text-red-600 dark:text-red-400" title="Line deletions">
+            -${deletionCount}
           </span>
         `
             : null

@@ -29,4 +29,25 @@ describe('GitStatusBadge', () => {
     expect(branchSpan?.classList.contains('min-w-0')).toBe(true);
     expect(branchSpan?.getAttribute('title')).toBe('feature/super-long-branch-name');
   });
+
+  it('renders line insertion and deletion counts', async () => {
+    const session = {
+      ...createMockSession(),
+      gitRepoPath: '/tmp/repo',
+      gitBranch: 'main',
+      gitInsertionCount: 12,
+      gitDeletionCount: 3,
+    } as Session;
+
+    const element = await fixture<GitStatusBadge>(html`
+      <git-status-badge .session=${session}></git-status-badge>
+    `);
+
+    await element.updateComplete;
+
+    expect(element.textContent).toContain('+12');
+    expect(element.textContent).toContain('-3');
+    expect(element.querySelector('[title="Line insertions"]')).toBeTruthy();
+    expect(element.querySelector('[title="Line deletions"]')).toBeTruthy();
+  });
 });

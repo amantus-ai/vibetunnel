@@ -17,6 +17,26 @@ export interface GitStatusCounts {
   deleted: number;
   ahead: number;
   behind: number;
+  insertions: number;
+  deletions: number;
+}
+
+function parseNumstat(output: string): { insertions: number; deletions: number } {
+  let insertions = 0;
+  let deletions = 0;
+
+  for (const line of output.trim().split('\n')) {
+    if (!line) continue;
+
+    const [inserted, deleted] = line.split('\t');
+    const insertedCount = Number.parseInt(inserted ?? '', 10);
+    const deletedCount = Number.parseInt(deleted ?? '', 10);
+
+    if (Number.isFinite(insertedCount)) insertions += insertedCount;
+    if (Number.isFinite(deletedCount)) deletions += deletedCount;
+  }
+
+  return { insertions, deletions };
 }
 
 /**
@@ -45,6 +65,8 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
     let addedCount = 0;
     let stagedCount = 0;
     let deletedCount = 0;
+    let insertions = 0;
+    let deletions = 0;
 
     // Parse branch line for ahead/behind info
     if (branchLine?.startsWith('##')) {
@@ -86,6 +108,19 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
       }
     }
 
+    try {
+      const { stdout: diffOutput } = await execFileAsync('git', ['diff', '--numstat', 'HEAD'], {
+        cwd: workingDir,
+        timeout: 5000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      });
+      const stats = parseNumstat(diffOutput);
+      insertions = stats.insertions;
+      deletions = stats.deletions;
+    } catch {
+      // Repositories without an initial commit cannot diff against HEAD.
+    }
+
     return {
       modified: modifiedCount,
       added: addedCount,
@@ -93,6 +128,8 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
       deleted: deletedCount,
       ahead: aheadCount,
       behind: behindCount,
+      insertions,
+      deletions,
     };
   } catch (_error) {
     // Not a git repository or git command failed
@@ -103,6 +140,8 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
       deleted: 0,
       ahead: 0,
       behind: 0,
+      insertions: 0,
+      deletions: 0,
     };
   }
 }
