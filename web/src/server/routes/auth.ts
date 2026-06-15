@@ -32,6 +32,11 @@ function getTailscaleLogin(req: AuthenticatedRequest): string | undefined {
   return getHeaderValue(req.headers['tailscale-user-login']);
 }
 
+function getConfiguredPasswordUserId(): string | undefined {
+  const username = process.env.VIBETUNNEL_USERNAME;
+  return username && process.env.VIBETUNNEL_PASSWORD ? username : undefined;
+}
+
 export function createAuthRoutes(config: AuthRoutesConfig): Router {
   const router = Router();
   const { authService } = config;
@@ -121,7 +126,8 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
         });
       }
 
-      const result = await authService.authenticateWithPassword(userId, password);
+      const passwordUserId = getConfiguredPasswordUserId() || userId;
+      const result = await authService.authenticateWithPassword(passwordUserId, password);
 
       if (result.success) {
         res.json({
@@ -208,10 +214,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
         enableSSHKeys: config.enableSSHKeys || false,
         disallowUserPassword: config.disallowUserPassword || false,
         noAuth: config.noAuth || false,
-        passwordAuthMode:
-          process.env.VIBETUNNEL_USERNAME && process.env.VIBETUNNEL_PASSWORD
-            ? 'configured'
-            : 'system',
+        passwordAuthMode: getConfiguredPasswordUserId() ? 'configured' : 'system',
       };
 
       // If user is authenticated via Tailscale, indicate this
