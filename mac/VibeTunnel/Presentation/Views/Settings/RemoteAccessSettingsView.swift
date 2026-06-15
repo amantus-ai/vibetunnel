@@ -23,6 +23,8 @@ struct RemoteAccessSettingsView: View {
     private var tailscaleService
     @Environment(CloudflareService.self)
     private var cloudflareService
+    @Environment(PinggyService.self)
+    private var pinggyService
     @Environment(TailscaleServeStatusService.self)
     private var tailscaleServeStatus
     @Environment(ServerManager.self)
@@ -66,6 +68,10 @@ struct RemoteAccessSettingsView: View {
                     cloudflareService: self.cloudflareService,
                     serverPort: self.serverPort,
                     accessMode: self.accessMode)
+
+                PinggyIntegrationSection(
+                    pinggyService: self.pinggyService,
+                    serverPort: self.serverPort)
 
                 NgrokIntegrationSection(
                     ngrokEnabled: self.$ngrokEnabled,

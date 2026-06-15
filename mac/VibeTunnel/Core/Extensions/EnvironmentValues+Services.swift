@@ -5,15 +5,17 @@ import SwiftUI
 extension EnvironmentValues {
     @Entry var serverManager: ServerManager?
 
-    @Entry var ngrokService: NgrokService? = nil
+    @Entry var ngrokService: NgrokService?
 
     @Entry var systemPermissionManager: SystemPermissionManager?
 
-    @Entry var terminalLauncher: TerminalLauncher? = nil
+    @Entry var terminalLauncher: TerminalLauncher?
 
     @Entry var tailscaleService: TailscaleService?
 
-    @Entry var cloudflareService: CloudflareService? = nil
+    @Entry var cloudflareService: CloudflareService?
+
+    @Entry var pinggyService: PinggyService?
 }
 
 // MARK: - View Extensions
@@ -27,7 +29,8 @@ extension View {
         systemPermissionManager: SystemPermissionManager? = nil,
         terminalLauncher: TerminalLauncher? = nil,
         tailscaleService: TailscaleService? = nil,
-        cloudflareService: CloudflareService? = nil)
+        cloudflareService: CloudflareService? = nil,
+        pinggyService: PinggyService? = nil)
         -> some View
     {
         self
@@ -39,5 +42,6 @@ extension View {
             .environment(\.terminalLauncher, terminalLauncher ?? TerminalLauncher.shared)
             .environment(\.tailscaleService, tailscaleService ?? TailscaleService.shared)
             .environment(\.cloudflareService, cloudflareService ?? CloudflareService.shared)
+            .environment(\.pinggyService, pinggyService ?? PinggyService.shared)
     }
 }

@@ -9,6 +9,7 @@ enum KeychainConstants {
     // MARK: - Account Names
 
     static let ngrokAuthToken = "ngrokAuthToken"
+    static let pinggyAccessToken = "pinggy-access-token"
     static let authToken = "authToken"
     static let dashboardPassword = "dashboard-password"
 }

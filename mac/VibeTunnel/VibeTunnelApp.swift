@@ -20,6 +20,7 @@ struct VibeTunnelApp: App {
     @State var ngrokService = NgrokService.shared
     @State var tailscaleService = TailscaleService.shared
     @State var cloudflareService = CloudflareService.shared
+    @State var pinggyService = PinggyService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
@@ -53,6 +54,7 @@ struct VibeTunnelApp: App {
                 .environment(self.ngrokService)
                 .environment(self.tailscaleService)
                 .environment(self.cloudflareService)
+                .environment(self.pinggyService)
                 .environment(self.permissionManager)
                 .environment(self.terminalLauncher)
                 .environment(self.gitRepositoryMonitor)
@@ -76,6 +78,7 @@ struct VibeTunnelApp: App {
                     .environment(self.ngrokService)
                     .environment(self.tailscaleService)
                     .environment(self.cloudflareService)
+                    .environment(self.pinggyService)
                     .environment(self.permissionManager)
                     .environment(self.terminalLauncher)
                     .environment(self.gitRepositoryMonitor)
@@ -102,6 +105,7 @@ struct VibeTunnelApp: App {
                 .environment(self.ngrokService)
                 .environment(self.tailscaleService)
                 .environment(self.cloudflareService)
+                .environment(self.pinggyService)
                 .environment(self.permissionManager)
                 .environment(self.terminalLauncher)
                 .environment(self.gitRepositoryMonitor)
@@ -441,6 +445,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let cloudflareService = app?.cloudflareService, cloudflareService.isRunning {
             self.logger.info("🔥 Sending quick termination signal to Cloudflare")
             cloudflareService.sendTerminationSignal()
+        }
+
+        if let pinggyService = app?.pinggyService, pinggyService.isRunning {
+            self.logger.info("Sending quick termination signal to Pinggy")
+            pinggyService.sendTerminationSignal()
         }
 
         // Stop HTTP server with very short timeout

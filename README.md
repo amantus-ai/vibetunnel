@@ -291,6 +291,14 @@ Both Private and Public modes automatically provide **HTTPS access**:
 2. Run `cloudflared tunnel --url http://localhost:4020`
 3. Access via the generated `*.trycloudflare.com` URL
 
+### Option 5: Pinggy
+1. Install the [Pinggy CLI](https://pinggy.io/docs/cli/): `npm install -g pinggy`
+2. Open VibeTunnel Settings → Remote → Pinggy Integration
+3. Optionally save a Pinggy access token for a persistent subdomain or custom domain
+4. Enable the tunnel and open the displayed public HTTPS URL
+
+Free tunnels use a new URL after reconnecting. A persistent subdomain or custom domain requires a Pinggy plan that supports it and must be assigned to the saved token in the [Pinggy dashboard](https://dashboard.pinggy.io/domains).
+
 ## Git Follow Mode
 
 Git Follow Mode keeps your main repository checkout synchronized with the branch you're working on in a Git worktree. This allows agents to work in worktrees while your IDE, server, and other tools stay open on the main repository - they'll automatically update when the worktree switches branches.

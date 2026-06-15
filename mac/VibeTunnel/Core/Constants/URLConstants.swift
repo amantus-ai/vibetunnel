@@ -35,6 +35,11 @@ enum URLConstants {
     static let cloudflareDocs =
         "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
 
+    // MARK: - Pinggy
+
+    static let pinggyDocs = "https://pinggy.io/docs/cli/"
+    static let pinggyDashboard = "https://dashboard.pinggy.io/domains"
+
     // MARK: - Update Feed
 
     static let updateFeedStable = "https://stats.store/api/v1/appcast/appcast.xml"
