@@ -50,6 +50,31 @@ describe('Auth Routes', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  describe('GET /api/auth/config', () => {
+    it('should report system password authentication by default', async () => {
+      vi.stubEnv('VIBETUNNEL_USERNAME', '');
+      vi.stubEnv('VIBETUNNEL_PASSWORD', '');
+      app.use('/api/auth', createAuthRoutes({ authService: mockAuthService }));
+
+      const response = await request(app).get('/api/auth/config');
+
+      expect(response.status).toBe(200);
+      expect(response.body.passwordAuthMode).toBe('system');
+    });
+
+    it('should report configured password authentication when both credentials are set', async () => {
+      vi.stubEnv('VIBETUNNEL_USERNAME', 'configured-user');
+      vi.stubEnv('VIBETUNNEL_PASSWORD', 'configured-password');
+      app.use('/api/auth', createAuthRoutes({ authService: mockAuthService }));
+
+      const response = await request(app).get('/api/auth/config');
+
+      expect(response.status).toBe(200);
+      expect(response.body.passwordAuthMode).toBe('configured');
+    });
   });
 
   describe('POST /api/auth/tailscale-token', () => {

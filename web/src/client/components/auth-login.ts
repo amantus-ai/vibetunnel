@@ -22,6 +22,7 @@ export class AuthLogin extends LitElement {
     enableSSHKeys: false,
     disallowUserPassword: false,
     noAuth: false,
+    passwordAuthMode: 'system' as 'system' | 'configured',
   };
   @state() private isMobile = false;
   private unsubscribeResponsive?: () => void;
@@ -149,6 +150,10 @@ export class AuthLogin extends LitElement {
     this.dispatchEvent(new CustomEvent('open-settings'));
   };
 
+  private get usesConfiguredPassword(): boolean {
+    return this.authConfig.passwordAuthMode === 'configured';
+  }
+
   render() {
     console.log(
       '🔍 Rendering auth login',
@@ -271,16 +276,24 @@ export class AuthLogin extends LitElement {
                           for="system-password"
                           class="block text-xs font-medium text-text mb-1.5"
                         >
-                          Computer login password
+                          ${
+                            this.usesConfiguredPassword
+                              ? 'Configured VibeTunnel password'
+                              : 'Computer login password'
+                          }
                         </label>
                         <input
                           id="system-password"
                           type="password"
                           class="input-field"
                           data-testid="password-input"
-                          placeholder="Enter your login password"
+                          placeholder=${
+                            this.usesConfiguredPassword
+                              ? 'Enter the configured password'
+                              : 'Enter your login password'
+                          }
                           autocomplete="current-password"
-                          aria-describedby="system-password-help"
+                          aria-describedby="password-help"
                           .value=${this.loginPassword}
                           @input=${(e: Event) => {
                             this.loginPassword = (e.target as HTMLInputElement).value;
@@ -289,12 +302,17 @@ export class AuthLogin extends LitElement {
                           required
                         />
                         <p
-                          id="system-password-help"
+                          id="password-help"
                           class="mt-2 text-xs leading-relaxed text-text-muted"
                         >
-                          Sent to the VibeTunnel host for operating system verification.
-                          VibeTunnel does not save it. To avoid entering your computer password,
-                          enable SSH Keys in VibeTunnel Settings &gt; Remote.
+                          ${
+                            this.usesConfiguredPassword
+                              ? 'Sent to the VibeTunnel host for verification.'
+                              : 'Sent to the VibeTunnel host for operating system verification.'
+                          }
+                          VibeTunnel does not save it. To avoid entering
+                          ${this.usesConfiguredPassword ? 'a password' : 'your computer password'}
+                          in the browser, enable SSH Keys in VibeTunnel Settings &gt; Remote.
                         </p>
                       </div>
                       <button
@@ -303,7 +321,13 @@ export class AuthLogin extends LitElement {
                         data-testid="password-submit"
                         ?disabled=${this.loading || !this.loginPassword}
                       >
-                        ${this.loading ? 'Authenticating...' : 'Log in with computer password'}
+                        ${
+                          this.loading
+                            ? 'Authenticating...'
+                            : this.usesConfiguredPassword
+                              ? 'Log in with configured password'
+                              : 'Log in with computer password'
+                        }
                       </button>
                     </form>
                   </div>

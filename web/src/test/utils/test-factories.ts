@@ -32,6 +32,7 @@ interface CreateAuthConfigOptions {
   enableSSHKeys?: boolean;
   disallowUserPassword?: boolean;
   noAuth?: boolean;
+  passwordAuthMode?: 'system' | 'configured';
 }
 
 interface CreateAuthResultOptions {
@@ -97,6 +98,7 @@ export function createAuthConfig(options: CreateAuthConfigOptions = {}): CreateA
     disallowUserPassword:
       options.disallowUserPassword !== undefined ? options.disallowUserPassword : false,
     noAuth: options.noAuth !== undefined ? options.noAuth : false,
+    passwordAuthMode: options.passwordAuthMode || 'system',
   };
 }
 

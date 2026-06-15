@@ -198,6 +198,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
         enableSSHKeys: boolean;
         disallowUserPassword: boolean;
         noAuth: boolean;
+        passwordAuthMode: 'system' | 'configured';
         tailscaleAuth?: boolean;
         authenticatedUser?: string;
         tailscaleUser?: TailscaleUser;
@@ -207,6 +208,10 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
         enableSSHKeys: config.enableSSHKeys || false,
         disallowUserPassword: config.disallowUserPassword || false,
         noAuth: config.noAuth || false,
+        passwordAuthMode:
+          process.env.VIBETUNNEL_USERNAME && process.env.VIBETUNNEL_PASSWORD
+            ? 'configured'
+            : 'system',
       };
 
       // If user is authenticated via Tailscale, indicate this

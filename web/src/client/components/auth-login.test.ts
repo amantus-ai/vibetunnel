@@ -145,7 +145,32 @@ describe('AuthLogin', () => {
       expect(element.textContent).toContain('VibeTunnel does not save it');
       expect(element.textContent).toContain('enable SSH Keys in VibeTunnel Settings > Remote');
       expect(passwordInput.autocomplete).toBe('current-password');
-      expect(passwordInput.getAttribute('aria-describedby')).toBe('system-password-help');
+      expect(passwordInput.getAttribute('aria-describedby')).toBe('password-help');
+    });
+
+    it('should describe configured password authentication without requesting a system password', async () => {
+      fetchMock.mockResponse(
+        '/api/auth/config',
+        createAuthConfig({
+          enableSSHKeys: true,
+          passwordAuthMode: 'configured',
+        })
+      );
+
+      const configuredAuthElement = await fixture<AuthLogin>(html`
+        <auth-login .authClient=${mockAuthClient}></auth-login>
+      `);
+      await waitForAsync(10);
+
+      expect(configuredAuthElement.textContent).toContain('Configured VibeTunnel password');
+      expect(configuredAuthElement.textContent).toContain(
+        'Sent to the VibeTunnel host for verification'
+      );
+      expect(configuredAuthElement.textContent).not.toContain('operating system verification');
+      expect(configuredAuthElement.textContent).not.toContain('Computer login password');
+      expect(configuredAuthElement.textContent).toContain('Log in with configured password');
+
+      configuredAuthElement.remove();
     });
 
     it('should handle successful password login', async () => {

@@ -137,7 +137,7 @@ private struct SecuritySection: View {
                             .foregroundColor(.blue)
                             .font(.system(size: 12))
                             .frame(width: 16, height: 16)
-                        Text("Account: \(NSUserName()). SSH Keys avoids entering your Mac password in a browser.")
+                        Text("Account: \(NSUserName()). SSH keys avoid entering your Mac password in a browser.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
