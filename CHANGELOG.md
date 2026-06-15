@@ -20,6 +20,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Focus the matching Ghostty tab when opening a macOS session instead of stopping after focusing its window (reported by [@singiamtel](https://github.com/singiamtel)) (#273)
 - Let force-terminated `vt` sessions exit instead of rerunning commands outside VibeTunnel, including suspended jobs (reported by [@cameroncooke](https://github.com/cameroncooke)) (#278)
 - Show long session titles with ellipsis in the compact iPhone header instead of hiding them entirely. (#516)
 - Report Tailscale Serve as running after its background setup command exits successfully, instead of leaving the macOS app stuck on “Starting…” (#556)

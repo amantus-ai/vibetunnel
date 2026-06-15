@@ -5,6 +5,11 @@ import OSLog
 /// Handles window matching and session-to-window mapping algorithms.
 @MainActor
 final class WindowMatcher {
+    struct TabMatch {
+        let tab: AXElement
+        let score: Int
+    }
+
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
         category: "WindowMatcher")
@@ -226,55 +231,65 @@ final class WindowMatcher {
 
     /// Find matching tab using accessibility APIs
     func findMatchingTab(tabs: [AXElement], sessionInfo: ServerSessionInfo?) -> AXElement? {
+        self.findBestMatchingTab(tabs: tabs, sessionInfo: sessionInfo)?.tab
+    }
+
+    /// Find the strongest matching tab and its confidence score.
+    func findBestMatchingTab(tabs: [AXElement], sessionInfo: ServerSessionInfo?) -> TabMatch? {
         guard let sessionInfo else { return nil }
 
-        let workingDir = sessionInfo.workingDir
-        let dirName = (workingDir as NSString).lastPathComponent
-        let sessionID = sessionInfo.id
-        let sessionName = sessionInfo.name
-
-        self.logger.debug("Looking for tab matching session \(sessionID) in \(tabs.count) tabs")
-        self.logger.debug("  Working dir: \(workingDir)")
-        self.logger.debug("  Dir name: \(dirName)")
-        self.logger.debug("  Session name: \(sessionName)")
+        self.logger.debug("Looking for tab matching session \(sessionInfo.id) in \(tabs.count) tabs")
+        var bestMatch: TabMatch?
 
         for (index, tab) in tabs.enumerated() {
             if let title = tab.title {
                 self.logger.debug("Tab \(index) title: \(title)")
 
-                // Check for session ID match first (most precise)
-                if title.contains(sessionID) || title.contains("TTY_SESSION_ID=\(sessionID)") {
-                    self.logger.info("Found tab by session ID match at index \(index)")
-                    return tab
-                }
-
-                // Check for session name match
-                if !sessionName.isEmpty, title.contains(sessionName) {
-                    self.logger.info("Found tab by session name match: \(sessionName) at index \(index)")
-                    return tab
-                }
-
-                // Check for directory match - be more flexible
-                let titleLower = title.lowercased()
-                let dirNameLower = dirName.lowercased()
-                let workingDirLower = workingDir.lowercased()
-
-                if titleLower.contains(dirNameLower) || titleLower.contains(workingDirLower) {
-                    self.logger.info("Found tab by directory match at index \(index)")
-                    return tab
-                }
-
-                // Check if the tab title ends with the directory name (common pattern)
-                if title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)") {
-                    self.logger.info("Found tab by directory suffix match at index \(index)")
-                    return tab
+                if let score = self.tabMatchScore(for: title, sessionInfo: sessionInfo),
+                   bestMatch == nil || score > bestMatch?.score ?? 0
+                {
+                    bestMatch = TabMatch(tab: tab, score: score)
+                    self.logger.info("Tab \(index) is the best match with score \(score)")
                 }
             } else {
                 self.logger.debug("Tab \(index): Could not get title")
             }
         }
 
-        self.logger.warning("No matching tab found for session \(sessionID)")
+        if bestMatch == nil {
+            self.logger.warning("No matching tab found for session \(sessionInfo.id)")
+        }
+        return bestMatch
+    }
+
+    /// Score tab-title evidence so precise session matches can beat stale window metadata.
+    func tabMatchScore(for title: String, sessionInfo: ServerSessionInfo) -> Int? {
+        if !sessionInfo.id.isEmpty,
+           title.contains(sessionInfo.id) || title.contains("TTY_SESSION_ID=\(sessionInfo.id)")
+        {
+            return 500
+        }
+
+        if !sessionInfo.name.isEmpty, title.contains(sessionInfo.name) {
+            return 400
+        }
+
+        let titleLower = title.lowercased()
+        let workingDirLower = sessionInfo.workingDir.lowercased()
+        if !workingDirLower.isEmpty, titleLower.contains(workingDirLower) {
+            return 200
+        }
+
+        let dirName = (sessionInfo.workingDir as NSString).lastPathComponent
+        let dirNameLower = dirName.lowercased()
+        if !dirNameLower.isEmpty,
+           titleLower.contains(dirNameLower) ||
+           title.hasSuffix(dirName) ||
+           title.hasSuffix(" - \(dirName)")
+        {
+            return 100
+        }
+
         return nil
     }
 }
