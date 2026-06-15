@@ -95,7 +95,7 @@ enum SettingsOpener {
         Task { @MainActor in
             // Wait until SettingsView exists and has subscribed to tab changes.
             for _ in 0..<20 {
-                guard self.findSettingsWindow() == nil else {
+                if self.findSettingsWindow() != nil {
                     NotificationCenter.default.post(
                         name: .openSettingsTab,
                         object: tab)
