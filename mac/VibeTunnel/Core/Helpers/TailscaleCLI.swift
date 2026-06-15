@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 enum TailscaleCLI {
@@ -54,7 +55,7 @@ enum TailscaleCLI {
             ipv4: addresses.first(where: Self.isIPv4Address))
     }
 
-    static func fetchStatus(executablePath: String) async -> Status? {
+    static func fetchStatus(executablePath: String, timeout: Duration = .seconds(5)) async -> Status? {
         await Task.detached(priority: .utility) {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: executablePath)
@@ -66,6 +67,17 @@ enum TailscaleCLI {
 
             do {
                 try process.run()
+                let timeoutTask = Task.detached(priority: .utility) {
+                    try? await Task.sleep(for: timeout)
+                    guard !Task.isCancelled, process.isRunning else { return }
+                    process.terminate()
+                    try? await Task.sleep(for: .milliseconds(250))
+                    if process.isRunning {
+                        kill(process.processIdentifier, SIGKILL)
+                    }
+                }
+                defer { timeoutTask.cancel() }
+
                 let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit()
                 guard process.terminationStatus == 0 else { return nil }

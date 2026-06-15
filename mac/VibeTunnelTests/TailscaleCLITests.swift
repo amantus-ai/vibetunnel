@@ -62,4 +62,25 @@ struct TailscaleCLITests {
             hostname: nil,
             ipv4: nil))
     }
+
+    @Test
+    func statusCommandTimesOut() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tailscale-timeout-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let executable = directory.appendingPathComponent("tailscale")
+        try Data("#!/bin/sh\ntrap '' TERM\nwhile :; do :; done\n".utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+
+        let clock = ContinuousClock()
+        let elapsed = await clock.measure {
+            let status = await TailscaleCLI.fetchStatus(
+                executablePath: executable.path,
+                timeout: .milliseconds(100))
+            #expect(status == nil)
+        }
+        #expect(elapsed < .seconds(2))
+    }
 }

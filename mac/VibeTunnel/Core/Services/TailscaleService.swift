@@ -159,7 +159,9 @@ final class TailscaleService {
             self.isRunning = false
             self.tailscaleHostname = nil
             self.tailscaleIP = nil
-            self.statusError = "Please start Tailscale"
+            self.statusError = self.hasGUIApp
+                ? "Please start Tailscale"
+                : "Start Tailscale with your system service manager"
             self.logger.info("Tailscale API and CLI status checks failed")
         }
     }
