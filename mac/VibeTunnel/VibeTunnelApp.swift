@@ -21,6 +21,7 @@ struct VibeTunnelApp: App {
     @State var tailscaleService = TailscaleService.shared
     @State var cloudflareService = CloudflareService.shared
     @State var pinggyService = PinggyService.shared
+    @State var pangolinService = PangolinService.shared
     @State var permissionManager = SystemPermissionManager.shared
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
@@ -55,6 +56,7 @@ struct VibeTunnelApp: App {
                 .environment(self.tailscaleService)
                 .environment(self.cloudflareService)
                 .environment(self.pinggyService)
+                .environment(self.pangolinService)
                 .environment(self.permissionManager)
                 .environment(self.terminalLauncher)
                 .environment(self.gitRepositoryMonitor)
@@ -79,6 +81,7 @@ struct VibeTunnelApp: App {
                     .environment(self.tailscaleService)
                     .environment(self.cloudflareService)
                     .environment(self.pinggyService)
+                    .environment(self.pangolinService)
                     .environment(self.permissionManager)
                     .environment(self.terminalLauncher)
                     .environment(self.gitRepositoryMonitor)
@@ -106,6 +109,7 @@ struct VibeTunnelApp: App {
                 .environment(self.tailscaleService)
                 .environment(self.cloudflareService)
                 .environment(self.pinggyService)
+                .environment(self.pangolinService)
                 .environment(self.permissionManager)
                 .environment(self.terminalLauncher)
                 .environment(self.gitRepositoryMonitor)
@@ -450,6 +454,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let pinggyService = app?.pinggyService, pinggyService.isRunning {
             self.logger.info("Sending quick termination signal to Pinggy")
             pinggyService.sendTerminationSignal()
+        }
+
+        if let pangolinService = app?.pangolinService, pangolinService.isRunning {
+            self.logger.info("Sending quick termination signal to Pangolin Newt")
+            pangolinService.sendTerminationSignal()
         }
 
         // Stop HTTP server with very short timeout

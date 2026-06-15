@@ -16,6 +16,8 @@ extension EnvironmentValues {
     @Entry var cloudflareService: CloudflareService?
 
     @Entry var pinggyService: PinggyService?
+
+    @Entry var pangolinService: PangolinService?
 }
 
 // MARK: - View Extensions
@@ -30,7 +32,8 @@ extension View {
         terminalLauncher: TerminalLauncher? = nil,
         tailscaleService: TailscaleService? = nil,
         cloudflareService: CloudflareService? = nil,
-        pinggyService: PinggyService? = nil)
+        pinggyService: PinggyService? = nil,
+        pangolinService: PangolinService? = nil)
         -> some View
     {
         self
@@ -43,5 +46,6 @@ extension View {
             .environment(\.tailscaleService, tailscaleService ?? TailscaleService.shared)
             .environment(\.cloudflareService, cloudflareService ?? CloudflareService.shared)
             .environment(\.pinggyService, pinggyService ?? PinggyService.shared)
+            .environment(\.pangolinService, pangolinService ?? PangolinService.shared)
     }
 }

@@ -10,6 +10,7 @@ enum KeychainConstants {
 
     static let ngrokAuthToken = "ngrokAuthToken"
     static let pinggyAccessToken = "pinggy-access-token"
+    static let pangolinSiteCredentials = "pangolin-site-credentials"
     static let authToken = "authToken"
     static let dashboardPassword = "dashboard-password"
 }

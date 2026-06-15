@@ -40,6 +40,11 @@ enum URLConstants {
     static let pinggyDocs = "https://pinggy.io/docs/cli/"
     static let pinggyDashboard = "https://dashboard.pinggy.io/domains"
 
+    // MARK: - Pangolin
+
+    static let pangolinDocs = "https://docs.pangolin.net/manage/sites/install-site"
+    static let pangolinCloud = "https://app.pangolin.net"
+
     // MARK: - Update Feed
 
     static let updateFeedStable = "https://stats.store/api/v1/appcast/appcast.xml"

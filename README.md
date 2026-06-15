@@ -299,6 +299,15 @@ Both Private and Public modes automatically provide **HTTPS access**:
 
 Free tunnels use a new URL after reconnecting. A persistent subdomain or custom domain requires a Pinggy plan that supports it and must be assigned to the saved token in the [Pinggy dashboard](https://dashboard.pinggy.io/domains).
 
+### Option 6: Pangolin
+1. Create a Site in [Pangolin](https://app.pangolin.net) and copy its Newt endpoint, ID, and secret
+2. Install [Newt](https://docs.pangolin.net/manage/sites/install-site): `curl -fsSL https://static.pangolin.net/get-newt.sh | bash`
+3. Open VibeTunnel Settings → Remote → Pangolin Integration and save the site credentials
+4. In Pangolin, create a public Resource targeting `http://localhost:4020`
+5. Connect the site in VibeTunnel and use the Resource URL configured by Pangolin
+
+VibeTunnel stores the Newt site credentials in Keychain and starts Newt with a protected temporary config file, keeping the secret out of process arguments and environment variables.
+
 ## Git Follow Mode
 
 Git Follow Mode keeps your main repository checkout synchronized with the branch you're working on in a Git worktree. This allows agents to work in worktrees while your IDE, server, and other tools stay open on the main repository - they'll automatically update when the worktree switches branches.

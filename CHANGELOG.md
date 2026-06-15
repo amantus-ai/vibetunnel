@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Add Pangolin Newt integration for managed remote access from the Mac app (#315)
 - Add Pinggy CLI integration for public remote access, including optional Keychain token storage for persistent URLs (requested by [@empz](https://github.com/empz)) (#505)
 - Recognize Augment Code's Auggie CLI as an AI assistant, add it to default Quick Start commands, and document setup (requested by [@rishitank](https://github.com/rishitank)) (#526)
 - Expose a stable, labeled terminal input node for browser automation and accessibility tools (reported by [@bharath2020](https://github.com/bharath2020)) (#339)
