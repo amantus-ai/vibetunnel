@@ -1,4 +1,7 @@
 import { type ChildProcess, spawn } from 'child_process';
+import { constants as fsConstants } from 'fs';
+import { access } from 'fs/promises';
+import { delimiter, join } from 'path';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('tailscale-serve');
@@ -7,6 +10,9 @@ export function getTailscaleSearchPaths(
   platform = process.platform,
   environment: NodeJS.ProcessEnv = process.env
 ): string[] {
+  const pathEntries = (environment.PATH?.split(delimiter) ?? [])
+    .filter((entry) => entry.length > 0)
+    .map((entry) => join(entry, platform === 'win32' ? 'tailscale.exe' : 'tailscale'));
   const nixPaths = [
     '/run/current-system/sw/bin/tailscale',
     environment.USER ? `/etc/profiles/per-user/${environment.USER}/bin/tailscale` : undefined,
@@ -14,25 +20,46 @@ export function getTailscaleSearchPaths(
   ].filter((path): path is string => path !== undefined);
 
   if (platform === 'darwin') {
-    return [
-      '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
-      '/usr/local/bin/tailscale',
-      '/opt/homebrew/bin/tailscale',
-      ...nixPaths,
-    ];
+    return Array.from(
+      new Set([
+        '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
+        '/usr/local/bin/tailscale',
+        '/opt/homebrew/bin/tailscale',
+        ...nixPaths,
+        ...pathEntries,
+      ])
+    );
   }
 
   if (platform === 'linux') {
-    return [
-      '/usr/bin/tailscale',
-      '/usr/local/bin/tailscale',
-      '/opt/tailscale/bin/tailscale',
-      '/snap/bin/tailscale',
-      ...nixPaths,
-    ];
+    return Array.from(
+      new Set([
+        '/usr/bin/tailscale',
+        '/usr/local/bin/tailscale',
+        '/opt/tailscale/bin/tailscale',
+        '/snap/bin/tailscale',
+        ...nixPaths,
+        ...pathEntries,
+      ])
+    );
   }
 
-  return nixPaths;
+  return Array.from(new Set([...nixPaths, ...pathEntries]));
+}
+
+export async function findTailscaleExecutable(
+  searchPaths = getTailscaleSearchPaths()
+): Promise<string | null> {
+  for (const executablePath of searchPaths) {
+    try {
+      await access(executablePath, fsConstants.X_OK);
+      return executablePath;
+    } catch {
+      // Continue checking other paths.
+    }
+  }
+
+  return null;
 }
 
 export interface TailscaleServeService {
@@ -41,6 +68,7 @@ export interface TailscaleServeService {
   isRunning(): boolean;
   isFunnelEnabled(): boolean;
   getStatus(): Promise<TailscaleServeStatus>;
+  getExecutablePath(): Promise<string>;
 }
 
 export interface TailscaleServeStatus {
@@ -572,6 +600,22 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       };
     }
 
+    if (this.currentPort === null) {
+      try {
+        await this.getExecutablePath();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          isRunning: false,
+          lastError: message,
+          isPermanentlyDisabled: false,
+          funnelEnabled: false,
+          desiredMode: this.desiredFunnel ? 'public' : 'private',
+          actualMode: 'private',
+        };
+      }
+    }
+
     // IMPROVED CHECK: First verify if Tailscale Serve is actually configured and working
     // Only mark as permanently disabled if we can't detect any working configuration
     if (!this.isPermanentlyDisabled) {
@@ -1076,41 +1120,18 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   }
 
   private async checkTailscaleAvailable(): Promise<void> {
-    const fs = await import('fs/promises');
+    await this.getExecutablePath();
+  }
 
-    const tailscalePaths = getTailscaleSearchPaths();
-
-    // Check platform-specific paths first
-    for (const path of tailscalePaths) {
-      try {
-        await fs.access(path, fs.constants.X_OK);
-        this.tailscaleExecutable = path;
-        logger.debug(`Found Tailscale at: ${path}`);
-        return;
-      } catch {
-        // Continue checking other paths
-      }
+  async getExecutablePath(): Promise<string> {
+    const executablePath = await findTailscaleExecutable();
+    if (!executablePath) {
+      throw new Error('Tailscale command not found. Please install Tailscale first.');
     }
 
-    // Fallback to checking PATH
-    return new Promise<void>((resolve, reject) => {
-      const checkProcess = spawn('which', ['tailscale'], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      checkProcess.on('exit', (code) => {
-        if (code === 0) {
-          // Keep default 'tailscale' which will use PATH
-          resolve();
-        } else {
-          reject(new Error('Tailscale command not found. Please install Tailscale first.'));
-        }
-      });
-
-      checkProcess.on('error', (error) => {
-        reject(new Error(`Failed to check Tailscale availability: ${error.message}`));
-      });
-    });
+    this.tailscaleExecutable = executablePath;
+    logger.debug(`Found Tailscale at: ${executablePath}`);
+    return executablePath;
   }
 }
 

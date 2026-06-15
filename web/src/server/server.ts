@@ -878,8 +878,11 @@ export async function createApp(): Promise<AppInstance> {
         if (tailscaleStatus.isRunning && !tailscaleStatus.isPermanentlyDisabled) {
           try {
             // Get Tailscale hostname from status
-            const { execSync } = await import('child_process');
-            const statusJson = execSync('tailscale status --json', { encoding: 'utf8' });
+            const { execFileSync } = await import('child_process');
+            const tailscaleExecutable = await tailscaleServeService.getExecutablePath();
+            const statusJson = execFileSync(tailscaleExecutable, ['status', '--json'], {
+              encoding: 'utf8',
+            });
             const status = JSON.parse(statusJson);
 
             if (status.Self?.DNSName) {

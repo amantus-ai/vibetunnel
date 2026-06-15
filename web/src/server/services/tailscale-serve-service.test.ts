@@ -1,5 +1,12 @@
+import { chmod, mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getTailscaleSearchPaths, TailscaleServeServiceImpl } from './tailscale-serve-service.js';
+import {
+  findTailscaleExecutable,
+  getTailscaleSearchPaths,
+  TailscaleServeServiceImpl,
+} from './tailscale-serve-service.js';
 
 // Mock the logger
 vi.mock('../../server/utils/logger.js', () => ({
@@ -49,6 +56,20 @@ describe('TailscaleServeService Integration Tests', () => {
           '/Users/alice/.nix-profile/bin/tailscale',
         ])
       );
+    });
+
+    it('resolves an executable from an explicit path outside PATH', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'vibetunnel-tailscale-'));
+      const executablePath = join(directory, 'tailscale');
+
+      try {
+        await writeFile(executablePath, '#!/bin/sh\nexit 0\n');
+        await chmod(executablePath, 0o755);
+
+        await expect(findTailscaleExecutable([executablePath])).resolves.toBe(executablePath);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
     });
   });
 

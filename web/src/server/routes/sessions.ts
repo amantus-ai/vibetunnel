@@ -109,53 +109,57 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     logger.debug('[GET /sessions/tailscale/test] Testing Tailscale connection');
     try {
       const { spawn } = await import('child_process');
+      const tailscaleExecutable = await tailscaleServeService.getExecutablePath().catch(() => null);
 
       // Test 1: Check if Tailscale is installed and running
-      const tailscaleStatus = await new Promise<{ isRunning: boolean; output: string }>(
-        (resolve) => {
-          const statusProcess = spawn('tailscale', ['status'], {
-            stdio: ['ignore', 'pipe', 'pipe'],
-          });
-
-          let stdout = '';
-          let stderr = '';
-
-          if (statusProcess.stdout) {
-            statusProcess.stdout.on('data', (data) => {
-              stdout += data.toString();
+      const tailscaleStatus = tailscaleExecutable
+        ? await new Promise<{ isRunning: boolean; output: string }>((resolve) => {
+            const statusProcess = spawn(tailscaleExecutable, ['status'], {
+              stdio: ['ignore', 'pipe', 'pipe'],
             });
-          }
 
-          if (statusProcess.stderr) {
-            statusProcess.stderr.on('data', (data) => {
-              stderr += data.toString();
-            });
-          }
+            let stdout = '';
+            let stderr = '';
 
-          statusProcess.on('exit', (code) => {
-            const output = stdout || stderr;
-            resolve({
-              isRunning: code === 0,
-              output: output.trim(),
-            });
-          });
+            if (statusProcess.stdout) {
+              statusProcess.stdout.on('data', (data) => {
+                stdout += data.toString();
+              });
+            }
 
-          statusProcess.on('error', () => {
-            resolve({
-              isRunning: false,
-              output: 'Tailscale command not found',
-            });
-          });
+            if (statusProcess.stderr) {
+              statusProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+              });
+            }
 
-          setTimeout(() => {
-            statusProcess.kill('SIGTERM');
-            resolve({
-              isRunning: false,
-              output: 'Tailscale status check timeout',
+            statusProcess.on('exit', (code) => {
+              const output = stdout || stderr;
+              resolve({
+                isRunning: code === 0,
+                output: output.trim(),
+              });
             });
-          }, 5000);
-        }
-      );
+
+            statusProcess.on('error', () => {
+              resolve({
+                isRunning: false,
+                output: 'Tailscale command not found',
+              });
+            });
+
+            setTimeout(() => {
+              statusProcess.kill('SIGTERM');
+              resolve({
+                isRunning: false,
+                output: 'Tailscale status check timeout',
+              });
+            }, 5000);
+          })
+        : {
+            isRunning: false,
+            output: 'Tailscale command not found',
+          };
 
       // Test 2: Check Tailscale Serve configuration
       const serveStatus = await tailscaleServeService.getStatus();

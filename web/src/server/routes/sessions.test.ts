@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { tailscaleServeService } from '../services/tailscale-serve-service';
 import { detectGitInfo } from '../utils/git-info';
 import { controlUnixHandler } from '../websocket/control-unix-handler';
 import { createSessionRoutes, requestTerminalSpawn } from './sessions';
@@ -95,6 +96,7 @@ describe('sessions routes', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -228,6 +230,60 @@ describe('sessions routes', () => {
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Failed to get server status',
       });
+    });
+  });
+
+  describe('GET /sessions/tailscale/test', () => {
+    it('returns diagnostics when Tailscale is not installed', async () => {
+      vi.spyOn(tailscaleServeService, 'getExecutablePath').mockRejectedValue(
+        new Error('Tailscale command not found')
+      );
+      vi.spyOn(tailscaleServeService, 'getStatus').mockResolvedValue({
+        isRunning: false,
+        lastError: 'Tailscale command not found',
+      });
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        remoteRegistry: null,
+        isHQMode: false,
+      });
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const testRoute = routes.find(
+        (route) =>
+          route.route && route.route.path === '/sessions/tailscale/test' && route.route.methods.get
+      );
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      await testRoute?.route?.stack[0].handle({} as Request, mockRes);
+
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tailscale: {
+            installed: false,
+            status: 'Tailscale command not found',
+          },
+          tailscaleServe: expect.objectContaining({
+            configured: false,
+            error: 'Tailscale command not found',
+          }),
+        })
+      );
     });
   });
 
