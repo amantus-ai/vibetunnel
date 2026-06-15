@@ -52,7 +52,7 @@ struct AuthenticationSection: View {
                             .foregroundColor(.blue)
                             .font(.system(size: 12))
                             .frame(width: 16, height: 16)
-                        Text("Uses your macOS username: \(NSUserName())")
+                        Text("Account: \(NSUserName()). SSH Keys avoids entering your Mac password in a browser.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()

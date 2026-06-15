@@ -23,9 +23,9 @@ enum AuthenticationMode: String, CaseIterable {
     var description: String {
         switch self {
         case .none: "Anyone can access the dashboard (not recommended)"
-        case .osAuth: "Use your macOS username and password"
+        case .osAuth: "Verify your macOS login password with macOS. VibeTunnel does not save it."
         case .sshKeys: "Use SSH keys from ~/.ssh/authorized_keys"
-        case .both: "Allow both authentication methods"
+        case .both: "Allow macOS password verification or SSH keys"
         }
     }
 }

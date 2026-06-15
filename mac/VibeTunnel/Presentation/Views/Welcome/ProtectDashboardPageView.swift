@@ -29,7 +29,7 @@ struct ProtectDashboardPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "Your dashboard is protected using your macOS username and password.\nNo additional setup is required.")
+                    "Your dashboard can verify your macOS login password or use SSH keys.\nVibeTunnel does not save your Mac password.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -45,7 +45,7 @@ struct ProtectDashboardPageView: View {
                                 Text("macOS Authentication")
                                     .font(.callout)
                                     .fontWeight(.medium)
-                                Text("Uses your system username and password")
+                                Text("Sends your login password to this Mac for system verification")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -59,7 +59,7 @@ struct ProtectDashboardPageView: View {
                                 Text("SSH Key Authentication")
                                     .font(.callout)
                                     .fontWeight(.medium)
-                                Text("Available as an alternative in Settings")
+                                Text("Avoids entering your Mac password in a browser")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

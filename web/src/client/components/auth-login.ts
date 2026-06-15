@@ -267,11 +267,20 @@ export class AuthLogin extends LitElement {
                     </div>
                     <form @submit=${this.handlePasswordLogin} class="space-y-3">
                       <div>
+                        <label
+                          for="system-password"
+                          class="block text-xs font-medium text-text mb-1.5"
+                        >
+                          Computer login password
+                        </label>
                         <input
+                          id="system-password"
                           type="password"
                           class="input-field"
                           data-testid="password-input"
-                          placeholder="System Password"
+                          placeholder="Enter your login password"
+                          autocomplete="current-password"
+                          aria-describedby="system-password-help"
                           .value=${this.loginPassword}
                           @input=${(e: Event) => {
                             this.loginPassword = (e.target as HTMLInputElement).value;
@@ -279,6 +288,14 @@ export class AuthLogin extends LitElement {
                           ?disabled=${this.loading}
                           required
                         />
+                        <p
+                          id="system-password-help"
+                          class="mt-2 text-xs leading-relaxed text-text-muted"
+                        >
+                          Sent to the VibeTunnel host for operating system verification.
+                          VibeTunnel does not save it. To avoid entering your computer password,
+                          enable SSH Keys in VibeTunnel Settings &gt; Remote.
+                        </p>
                       </div>
                       <button
                         type="submit"
@@ -286,7 +303,7 @@ export class AuthLogin extends LitElement {
                         data-testid="password-submit"
                         ?disabled=${this.loading || !this.loginPassword}
                       >
-                        ${this.loading ? 'Authenticating...' : 'Login with Password'}
+                        ${this.loading ? 'Authenticating...' : 'Log in with computer password'}
                       </button>
                     </form>
                   </div>

@@ -133,9 +133,19 @@ describe('AuthLogin', () => {
   describe('password authentication', () => {
     it('should show password form', () => {
       const passwordForm = element.querySelector('form');
-      const passwordInput = element.querySelector('[data-testid="password-input"]');
+      const passwordInput = element.querySelector(
+        '[data-testid="password-input"]'
+      ) as HTMLInputElement;
       expect(passwordForm).toBeTruthy();
       expect(passwordInput).toBeTruthy();
+      expect(element.textContent).toContain('Computer login password');
+      expect(element.textContent).toContain(
+        'Sent to the VibeTunnel host for operating system verification'
+      );
+      expect(element.textContent).toContain('VibeTunnel does not save it');
+      expect(element.textContent).toContain('enable SSH Keys in VibeTunnel Settings > Remote');
+      expect(passwordInput.autocomplete).toBe('current-password');
+      expect(passwordInput.getAttribute('aria-describedby')).toBe('system-password-help');
     });
 
     it('should handle successful password login', async () => {
