@@ -2,6 +2,16 @@ import AppKit
 import Foundation
 import OSLog
 
+enum WindowMatchScore {
+    static let sessionID = 500
+    static let windowID = 250
+    static let sessionName = 200
+    static let workingDirectory = 150
+    static let bounds = 100
+    static let directoryName = 100
+    static let storedTitle = 25
+}
+
 /// Handles window matching and session-to-window mapping algorithms.
 @MainActor
 final class WindowMatcher {
@@ -267,17 +277,17 @@ final class WindowMatcher {
         if !sessionInfo.id.isEmpty,
            title.contains(sessionInfo.id) || title.contains("TTY_SESSION_ID=\(sessionInfo.id)")
         {
-            return 500
+            return WindowMatchScore.sessionID
         }
 
         if !sessionInfo.name.isEmpty, title.contains(sessionInfo.name) {
-            return 400
+            return WindowMatchScore.sessionName
         }
 
         let titleLower = title.lowercased()
         let workingDirLower = sessionInfo.workingDir.lowercased()
         if !workingDirLower.isEmpty, titleLower.contains(workingDirLower) {
-            return 200
+            return WindowMatchScore.workingDirectory
         }
 
         let dirName = (sessionInfo.workingDir as NSString).lastPathComponent
@@ -287,7 +297,7 @@ final class WindowMatcher {
            title.hasSuffix(dirName) ||
            title.hasSuffix(" - \(dirName)")
         {
-            return 100
+            return WindowMatchScore.directoryName
         }
 
         return nil

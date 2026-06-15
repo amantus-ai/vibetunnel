@@ -24,6 +24,9 @@ struct WindowFocuserTests {
         #expect(sessionIDScore > sessionNameScore)
         #expect(sessionNameScore > workingDirScore)
         #expect(workingDirScore > directoryScore)
+        #expect(sessionIDScore > WindowMatchScore.windowID + WindowMatchScore.bounds)
+        #expect(sessionNameScore < WindowMatchScore.windowID)
+        #expect(directoryScore < WindowMatchScore.windowID)
         #expect(matcher.tabMatchScore(for: "unrelated", sessionInfo: sessionInfo) == nil)
     }
 
