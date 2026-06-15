@@ -92,8 +92,19 @@ enum SettingsOpener {
     static func openSettingsTab(_ tab: SettingsTab) {
         self.openSettings()
 
-        Task {
-            // Then switch to the specific tab
+        Task { @MainActor in
+            // Wait until SettingsView exists and has subscribed to tab changes.
+            for _ in 0..<20 {
+                guard self.findSettingsWindow() == nil else {
+                    NotificationCenter.default.post(
+                        name: .openSettingsTab,
+                        object: tab)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+
+            // Preserve the navigation request even if window discovery times out.
             NotificationCenter.default.post(
                 name: .openSettingsTab,
                 object: tab)

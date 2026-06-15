@@ -10,7 +10,7 @@ struct WelcomePresentationModeTests {
         #expect(mode == .full)
         #expect(mode.pageCount == 9)
         #expect(mode.showsPageIndicators)
-        #expect(mode.opensSettingsOnFinish)
+        #expect(mode.settingsTabOnFinish == .remoteAccess)
     }
 
     @Test("Returning users see only CLI maintenance", arguments: [1, 4, 5])
@@ -20,6 +20,6 @@ struct WelcomePresentationModeTests {
         #expect(mode == .cliMaintenance)
         #expect(mode.pageCount == 1)
         #expect(!mode.showsPageIndicators)
-        #expect(!mode.opensSettingsOnFinish)
+        #expect(mode.settingsTabOnFinish == nil)
     }
 }

@@ -1,88 +1,78 @@
 import SwiftUI
 
-/// Fifth page showing how to access the dashboard and ngrok integration.
+/// Final onboarding page explaining local and remote dashboard access.
 ///
 /// This view provides information about accessing the VibeTunnel dashboard
-/// from various devices, including options for ngrok tunneling and Tailscale
-/// networking. It also displays project credits.
+/// locally or from another device through Tailscale.
 ///
 /// ## Topics
 ///
 /// ### Overview
 /// The dashboard access page includes:
-/// - Instructions for remote dashboard access
-/// - Open Dashboard button for local access
-/// - Information about tunneling options (ngrok, Tailscale)
-/// - Project credits and contributor links
+/// - Local dashboard access
+/// - Tailscale setup steps
+/// - Direct navigation to Remote settings
 ///
 /// ### Networking Options
 /// - Local access via localhost
-/// - ngrok tunnel configuration
 /// - Tailscale VPN recommendation
 struct AccessDashboardPageView: View {
-    @AppStorage("ngrokEnabled")
-    private var ngrokEnabled = false
     @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
 
     var body: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 16) {
-                Text("Accessing Your Dashboard")
-                    .font(.largeTitle)
-                    .fontWeight(.semibold)
+        VStack(spacing: 14) {
+            Text("Access VibeTunnel Anywhere")
+                .font(.largeTitle)
+                .fontWeight(.semibold)
 
-                Text(
-                    "To access your terminals from any device, create a tunnel from your device.\n\nThis can be done via **ngrok** in settings or **Cloudflare** or **Tailscale**.")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .fixedSize(horizontal: false, vertical: true)
+            Text(
+                "The dashboard works locally now. For access from your phone or another computer, connect both devices through **Tailscale** (recommended).")
+                .font(.callout)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 500)
+                .fixedSize(horizontal: false, vertical: true)
 
-                VStack(spacing: 12) {
-                    // Open Dashboard button
-                    Button(action: {
-                        if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverPort) {
-                            NSWorkspace.shared.open(dashboardURL)
-                        }
-                    }, label: {
-                        HStack {
-                            Image(systemName: "safari")
-                            Text("Open Dashboard")
-                        }
-                    })
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+            VStack(alignment: .leading, spacing: 7) {
+                RemoteAccessSetupStep(number: 1, text: "Install Tailscale on this Mac and your other device.")
+                RemoteAccessSetupStep(number: 2, text: "Sign in to the same Tailscale account on both devices.")
+                RemoteAccessSetupStep(
+                    number: 3,
+                    text: "Enable Tailscale Integration in Remote settings, then open the displayed URL.")
+            }
+            .frame(maxWidth: 500, alignment: .leading)
 
-                    // Tailscale link button
-                    TailscaleLink()
-                }
+            HStack(spacing: 12) {
+                Button(action: {
+                    if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverPort) {
+                        NSWorkspace.shared.open(dashboardURL)
+                    }
+                }, label: {
+                    Label("Open Local Dashboard", systemImage: "safari")
+                })
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+
+                Button(action: {
+                    SettingsOpener.openSettingsTab(.remoteAccess)
+                }, label: {
+                    Label("Configure Remote Access", systemImage: "network")
+                })
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("configure-remote-access")
             }
 
-            // Credits
-            VStack(spacing: 4) {
-                Text("VibeTunnel is open source and brought to you by")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                HStack(spacing: 4) {
-                    CreditLink(name: "@badlogic", url: "https://mariozechner.at/")
-
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    CreditLink(name: "@mitsuhiko", url: "https://lucumr.pocoo.org/")
-
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    CreditLink(name: "@steipete", url: "https://steipete.me")
+            Button(action: {
+                if let tailscaleURL = URL(string: URLConstants.tailscaleInstallGuide) {
+                    NSWorkspace.shared.open(tailscaleURL)
                 }
-            }
-            Spacer()
+            }, label: {
+                Label("Tailscale installation guide", systemImage: "questionmark.circle")
+            })
+            .buttonStyle(.link)
+            .pointingHandCursor()
         }
         .padding()
     }
@@ -90,29 +80,24 @@ struct AccessDashboardPageView: View {
 
 // MARK: - Supporting Views
 
-/// Tailscale link component with hover effect
-struct TailscaleLink: View {
-    @State private var isHovering = false
+private struct RemoteAccessSetupStep: View {
+    let number: Int
+    let text: String
 
     var body: some View {
-        Button(action: {
-            if let tailscaleURL = URL(string: "https://tailscale.com/") {
-                NSWorkspace.shared.open(tailscaleURL)
-            }
-        }, label: {
-            HStack {
-                Image(systemName: "link")
-                Text("Learn more about Tailscale")
-                    .underline(self.isHovering, color: .accentColor)
-            }
-        })
-        .buttonStyle(.link)
-        .pointingHandCursor()
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                self.isHovering = hovering
-            }
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(self.number)")
+                .font(.caption.bold())
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Color.accentColor))
+
+            Text(self.text)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 

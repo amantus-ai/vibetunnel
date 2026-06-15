@@ -21,8 +21,13 @@ enum WelcomePresentationMode: Equatable {
         self == .full
     }
 
-    var opensSettingsOnFinish: Bool {
-        self == .full
+    var settingsTabOnFinish: SettingsTab? {
+        switch self {
+        case .full:
+            .remoteAccess
+        case .cliMaintenance:
+            nil
+        }
     }
 }
 
@@ -227,11 +232,11 @@ struct WelcomeView: View {
             // Close the window using the SwiftUI dismiss environment
             self.dismiss()
 
-            if self.mode.opensSettingsOnFinish {
+            if let settingsTab = mode.settingsTabOnFinish {
                 // Open settings after a delay to ensure the window is fully closed
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(200))
-                    SettingsOpener.openSettings()
+                    SettingsOpener.openSettingsTab(settingsTab)
                 }
             }
         }
