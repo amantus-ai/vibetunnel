@@ -2,6 +2,22 @@ import AppKit
 import Foundation
 import OSLog
 
+struct WindowMatchEvidence: Comparable, CustomStringConvertible {
+    let strongest: Int
+    let identity: Int
+
+    var description: String {
+        "\(self.strongest) (identity \(self.identity))"
+    }
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        if lhs.strongest != rhs.strongest {
+            return lhs.strongest < rhs.strongest
+        }
+        return lhs.identity < rhs.identity
+    }
+}
+
 enum WindowMatchScore {
     static let sessionID = 500
     static let windowID = 250
@@ -10,6 +26,10 @@ enum WindowMatchScore {
     static let bounds = 100
     static let directoryName = 100
     static let storedTitle = 25
+
+    static func combined(identity: Int, content: Int) -> WindowMatchEvidence {
+        WindowMatchEvidence(strongest: max(identity, content), identity: identity)
+    }
 }
 
 /// Handles window matching and session-to-window mapping algorithms.

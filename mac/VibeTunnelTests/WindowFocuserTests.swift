@@ -27,6 +27,17 @@ struct WindowFocuserTests {
         #expect(sessionIDScore > WindowMatchScore.windowID + WindowMatchScore.bounds)
         #expect(sessionNameScore < WindowMatchScore.windowID)
         #expect(directoryScore < WindowMatchScore.windowID)
+        let exactSession = WindowMatchScore.combined(identity: 0, content: sessionIDScore)
+        let staleWeakMatch = WindowMatchScore.combined(
+            identity: WindowMatchScore.windowID + WindowMatchScore.bounds,
+            content: sessionNameScore)
+        let trackedDuplicate = WindowMatchScore.combined(
+            identity: WindowMatchScore.windowID,
+            content: sessionNameScore)
+        let untrackedDuplicate = WindowMatchScore.combined(identity: 0, content: sessionNameScore)
+
+        #expect(exactSession > staleWeakMatch)
+        #expect(trackedDuplicate > untrackedDuplicate)
         #expect(matcher.tabMatchScore(for: "unrelated", sessionInfo: sessionInfo) == nil)
     }
 

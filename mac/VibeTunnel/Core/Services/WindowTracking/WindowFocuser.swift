@@ -8,7 +8,7 @@ final class WindowFocuser {
     private struct WindowTabMatch {
         let window: AXElement
         let tabs: [AXElement]
-        let score: Int
+        let score: WindowMatchEvidence
     }
 
     private let logger = Logger(
@@ -310,19 +310,18 @@ final class WindowFocuser {
         let sessionInfo = providedSessionInfo ?? SessionMonitor.shared.sessions[windowInfo.sessionID]
 
         // First, try to find window with matching tab content
-        var bestTrackedWindow: (window: AXElement, score: Int)?
-        var bestMatchWindow: (window: AXElement, score: Int)?
+        var bestTrackedWindow: (window: AXElement, score: WindowMatchEvidence)?
+        var bestMatchWindow: (window: AXElement, score: WindowMatchEvidence)?
         var bestTabMatch: WindowTabMatch?
 
         for (index, window) in windows.enumerated() {
             var identityScore = 0
-            var matchScore = 0
+            var contentScore = 0
 
             // Try window ID attribute for matching
             if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
                     identityScore += WindowMatchScore.windowID
-                    matchScore += WindowMatchScore.windowID
                 }
                 self.logger
                     .debug(
@@ -341,7 +340,6 @@ final class WindowFocuser {
                    abs(windowFrame.height - bounds.height) < tolerance
                 {
                     identityScore += WindowMatchScore.bounds
-                    matchScore += WindowMatchScore.bounds
                     self.logger
                         .debug(
                             "Window \(index) bounds match! Position: (\(windowFrame.origin.x), \(windowFrame.origin.y)), Size: (\(windowFrame.width), \(windowFrame.height))")
@@ -355,13 +353,13 @@ final class WindowFocuser {
                 if let sessionInfo,
                    let titleScore = self.windowMatcher.tabMatchScore(for: title, sessionInfo: sessionInfo)
                 {
-                    matchScore += titleScore
+                    contentScore = max(contentScore, titleScore)
                     self.logger.debug("Window \(index) has session title evidence worth \(titleScore)")
                 } else if !windowInfo.sessionID.isEmpty,
                           title.contains(windowInfo.sessionID) ||
                           title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)")
                 {
-                    matchScore += WindowMatchScore.sessionID
+                    contentScore = max(contentScore, WindowMatchScore.sessionID)
                     self.logger.debug("Window \(index) has session ID in title")
                 }
 
@@ -369,19 +367,22 @@ final class WindowFocuser {
                 if !title
                     .isEmpty, windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? "")
                 {
-                    matchScore += WindowMatchScore.storedTitle
+                    contentScore = max(contentScore, WindowMatchScore.storedTitle)
                 }
             }
 
+            let trackedScore = WindowMatchScore.combined(identity: identityScore, content: 0)
             if identityScore > 0,
-               bestTrackedWindow == nil || identityScore > bestTrackedWindow?.score ?? 0
+               bestTrackedWindow == nil || trackedScore > bestTrackedWindow?.score ?? trackedScore
             {
-                bestTrackedWindow = (window, identityScore)
+                bestTrackedWindow = (window, trackedScore)
             }
 
+            let matchScore = WindowMatchScore.combined(identity: identityScore, content: contentScore)
+
             // Keep track of the best metadata match as a fallback.
-            if matchScore > 0 {
-                if bestMatchWindow == nil || matchScore > bestMatchWindow?.score ?? 0 {
+            if matchScore.strongest > 0 {
+                if bestMatchWindow == nil || matchScore > bestMatchWindow?.score ?? matchScore {
                     bestMatchWindow = (window, matchScore)
                     self.logger.debug("Window \(index) is new best match with score: \(matchScore)")
                 }
@@ -390,16 +391,17 @@ final class WindowFocuser {
             if let tabs = getTabs(from: window),
                let tabMatch = self.windowMatcher.findBestMatchingTab(tabs: tabs, sessionInfo: sessionInfo)
             {
-                let tabScore = identityScore + tabMatch.score
-                if bestTabMatch == nil || tabScore > bestTabMatch?.score ?? 0 {
+                let tabScore = WindowMatchScore.combined(identity: identityScore, content: tabMatch.score)
+                if bestTabMatch == nil || tabScore > bestTabMatch?.score ?? tabScore {
                     bestTabMatch = WindowTabMatch(window: window, tabs: tabs, score: tabScore)
                     self.logger.debug("Window \(index) is new best tab match with score: \(tabScore)")
                 }
             }
         }
 
-        let trackedScore = bestTrackedWindow?.score ?? 0
-        let metadataScore = bestMatchWindow?.score ?? 0
+        let noEvidence = WindowMatchScore.combined(identity: 0, content: 0)
+        let trackedScore = bestTrackedWindow?.score ?? noEvidence
+        let metadataScore = bestMatchWindow?.score ?? noEvidence
 
         if let bestTabMatch,
            bestTabMatch.score >= metadataScore,
