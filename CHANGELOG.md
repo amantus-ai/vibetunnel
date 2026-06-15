@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Recognize Augment Code's Auggie CLI as an AI assistant, add it to default Quick Start commands, and document setup (requested by [@rishitank](https://github.com/rishitank)) (#526)
 - Expose a stable, labeled terminal input node for browser automation and accessibility tools (reported by [@bharath2020](https://github.com/bharath2020)) (#339)
 - Show line insertion and deletion counts alongside file changes in web session Git status badges (thanks [@abhinavgautam01](https://github.com/abhinavgautam01)) (#48)
 - Let mobile users reorder, hide, and choose layouts for terminal quick keys, with browser-local persistence and an unchanged default layout (via [@ndraiman](https://github.com/ndraiman)) (#564)

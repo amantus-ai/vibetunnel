@@ -62,6 +62,7 @@ export interface VibeTunnelConfig {
 export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
   { name: '✨ codex', command: 'codex' },
   { name: '✨ claude', command: 'claude' },
+  { name: '✨ auggie', command: 'auggie' },
   { command: 'gemini3' },
   { command: 'opencode 4' },
   { command: 'zsh' },

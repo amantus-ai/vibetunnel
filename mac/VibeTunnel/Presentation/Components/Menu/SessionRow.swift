@@ -380,7 +380,7 @@ struct SessionRow: View {
 
     private var isAIAssistantSession: Bool {
         // Check if this is an AI assistant session by looking at the command
-        let aiAssistants = ["claude", "gemini", "openhands", "aider", "codex"]
+        let aiAssistants = ["claude", "gemini", "openhands", "aider", "codex", "auggie"]
         let cmd = self.commandName.lowercased()
 
         // Match exact executable names or at word boundaries

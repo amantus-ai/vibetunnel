@@ -144,6 +144,7 @@
             "pages": [
               "docs/claude",
               "CLAUDE",
+              "docs/auggie",
               "docs/gemini",
               "GEMINI",
               ".github/workflows/README.md"

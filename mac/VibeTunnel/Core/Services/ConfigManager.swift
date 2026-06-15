@@ -125,6 +125,7 @@ final class ConfigManager {
     private let defaultCommands = [
         QuickStartCommand(name: "✨ codex", command: "codex"),
         QuickStartCommand(name: "✨ claude", command: "claude"),
+        QuickStartCommand(name: "✨ auggie", command: "auggie"),
         QuickStartCommand(name: nil, command: "gemini3"),
         QuickStartCommand(name: nil, command: "opencode 4"),
         QuickStartCommand(name: nil, command: "zsh"),

@@ -5,7 +5,7 @@ import { createLogger } from './logger.js';
 
 const logger = createLogger('ai-sessions');
 
-const AI_ASSISTANTS = ['claude', 'gemini', 'openhands', 'aider', 'codex'];
+const AI_ASSISTANTS = ['claude', 'gemini', 'openhands', 'aider', 'codex', 'auggie'];
 
 /**
  * Check if a session is an AI assistant based on command

@@ -156,7 +156,15 @@ describe('SessionCreateForm', () => {
 
       // The test environment may not render the buttons correctly due to lit-html issues
       // so we'll just verify the data structure exists
-      const expectedCommands = ['codex', 'claude', 'gemini3', 'opencode 4', 'zsh', 'node'];
+      const expectedCommands = [
+        'codex',
+        'claude',
+        'auggie',
+        'gemini3',
+        'opencode 4',
+        'zsh',
+        'node',
+      ];
       const actualCommands = element.quickStartCommands.map((item) => item.command);
 
       expectedCommands.forEach((cmd) => {
