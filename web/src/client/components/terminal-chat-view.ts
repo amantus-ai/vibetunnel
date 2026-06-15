@@ -1108,13 +1108,14 @@ export class TerminalChatView extends LitElement {
           @click=${(e: Event) => e.stopPropagation()}
           @keydown=${(e: KeyboardEvent) => e.stopPropagation()}
         >
+          <!-- Autocorrect is intentional; spellcheck stays off because commands may contain secrets. -->
           <input
             id="chat-input-field"
             type="text"
             class="chat-input"
             placeholder="Type a command..."
             autocomplete="off"
-            autocorrect="off"
+            autocorrect="on"
             autocapitalize="off"
             spellcheck="false"
             @keydown=${this.handleInputKeydown}
