@@ -1,9 +1,10 @@
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
 const { prodOptions } = require('./esbuild-config.js');
 const { buildCli } = require('./build-cli.js');
+const { getCustomNodeBuildArgs } = require('./custom-node-args.js');
 
 async function build() {
   console.log('Starting build process...');
@@ -96,15 +97,14 @@ async function build() {
     console.log('  - pty.node: ✓');
     console.log('  - spawn-helper: ✓');
   } else {
-    // Check for --custom-node flag
-    const useCustomNode = process.argv.includes('--custom-node');
+    const customNodeArgs = getCustomNodeBuildArgs(process.argv);
 
-    if (useCustomNode) {
+    if (customNodeArgs) {
       console.log('Using custom Node.js for smaller binary size...');
-      execSync('node build-native.js --custom-node', { stdio: 'inherit' });
+      execFileSync(process.execPath, ['build-native.js', ...customNodeArgs], { stdio: 'inherit' });
     } else {
       console.log('Using system Node.js...');
-      execSync('node build-native.js', { stdio: 'inherit' });
+      execFileSync(process.execPath, ['build-native.js'], { stdio: 'inherit' });
     }
   }
 

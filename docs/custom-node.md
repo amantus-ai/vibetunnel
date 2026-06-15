@@ -5,17 +5,17 @@
 VibeTunnel uses Node.js Single Executable Applications (SEA) to create a standalone terminal server. However, the standard Node.js binary is quite large:
 
 - **Standard Node.js binary**: ~110MB
-- **Custom minimal Node.js**: ~43MB (61% reduction)
-- **Final executable size**: ~45MB (down from ~105MB)
-- **Final app size impact**: Reduces app from ~130MB to ~88MB
+- **Custom minimal Node.js**: ~68MB (38% reduction)
+- **Final executable size**: ~72MB
+- **Final app size impact**: Saves roughly 40MB compared with embedding the standard runtime
 
 We don't need many Node.js features for VibeTunnel:
-- No internationalization (ICU) support needed
+- Small ICU data is sufficient for Unicode-aware JavaScript and English locale data
 - No npm package manager in the binary
 - No inspector/debugging protocol
 - No V8 snapshots or code cache
 
-By building a custom Node.js without these features, we achieve a significantly smaller app bundle while maintaining full functionality.
+By building a custom Node.js with small ICU and without the remaining features, we achieve a significantly smaller app bundle while maintaining full functionality.
 
 ## Build Behavior
 
@@ -47,7 +47,7 @@ The build script will automatically use these tools if available, falling back t
 ## Build Automation
 
 ### Release Builds
-The release script (`mac/scripts/release.sh`) automatically checks for and builds custom Node.js if needed. You don't need to manually build it before releases.
+The release script (`mac/scripts/release.sh`) forces a fresh web/native build and requires the pinned custom Node.js runtime. It builds and caches the runtime when needed; releases fail instead of silently embedding the full system Node.js binary.
 
 ### Manual Custom Node.js Build
 
@@ -55,7 +55,7 @@ To build the custom Node.js manually (outside of Xcode):
 
 ```bash
 cd web
-node build-custom-node.js --latest
+node build-custom-node.js
 ```
 
 This will:
@@ -93,7 +93,7 @@ Note: You may see a warning about "invalidating the code signature" during the s
 ## Technical Details
 
 ### Features Disabled
-- `--without-intl` - Removes internationalization support
+- `--with-intl=small-icu` - Keeps Unicode semantics with reduced locale data
 - `--without-npm` - Excludes npm from the binary
 - `--without-corepack` - Removes package manager wrapper
 - `--without-inspector` - Disables debugging protocol

@@ -6,10 +6,10 @@
  * This script automatically adapts to CI and local environments.
  * 
  * Usage:
- *   node build-custom-node.js                    # Builds Node.js 24.2.0 (recommended)
+ *   node build-custom-node.js                    # Builds the pinned Node.js 24 LTS release
  *   node build-custom-node.js --latest           # Latest version
- *   node build-custom-node.js --version=24.2.0   # Specific version
- *   NODE_VERSION=24.2.0 node build-custom-node.js  # Via environment variable (CI)
+ *   node build-custom-node.js --version=24.16.0  # Specific version
+ *   NODE_VERSION=24.16.0 node build-custom-node.js  # Via environment variable (CI)
  * 
  * In CI environments:
  *   - Outputs GitHub Actions variables
@@ -17,10 +17,12 @@
  *   - Creates build summary files
  */
 
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+
+const DEFAULT_NODE_VERSION = '24.16.0';
 
 // Detect if running in CI
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
@@ -43,6 +45,42 @@ function setOutput(name, value) {
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
   }
+}
+
+function verifyCustomNodeDependencies(customNodePath, platform) {
+  if (platform !== 'darwin') {
+    return;
+  }
+
+  const dependencies = execFileSync('otool', ['-L', customNodePath], { encoding: 'utf8' });
+  const nonSystemDependencies = dependencies
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.includes(' (compatibility version'))
+    .map(line => line.split(' (compatibility version', 1)[0])
+    .filter(dependency => {
+      return !dependency.startsWith('/usr/lib/') && !dependency.startsWith('/System/Library/');
+    });
+  if (nonSystemDependencies.length > 0) {
+    throw new Error(
+      `Custom Node.js linked non-system libraries:\n${nonSystemDependencies.join('\n')}`
+    );
+  }
+  console.log('Verified custom Node.js uses only system dynamic libraries.');
+}
+
+function verifyCustomNodeRuntime(customNodePath, platform) {
+  const version = execFileSync(customNodePath, ['--version'], { encoding: 'utf8' }).trim();
+  execFileSync(
+    customNodePath,
+    [
+      '-e',
+      'require("node:crypto"); require("node:http"); require("node:zlib"); if (!/^[$_\\p{ID_Start}]$/u.test("a")) process.exit(1);',
+    ],
+    { stdio: 'inherit' }
+  );
+  verifyCustomNodeDependencies(customNodePath, platform);
+  return version;
 }
 
 // Helper to download files
@@ -98,8 +136,8 @@ async function buildCustomNode() {
     // Support CI environment variable
     nodeSourceVersion = process.env.NODE_VERSION;
   } else {
-    // Default to Node.js 24.3.0 (recommended version)
-    nodeSourceVersion = '24.3.0';
+    // Pin release builds to the maintained Node.js 24 LTS line.
+    nodeSourceVersion = DEFAULT_NODE_VERSION;
   }
   
   const platform = process.platform;
@@ -116,23 +154,48 @@ async function buildCustomNode() {
   const versionDir = path.join(buildDir, `node-v${nodeSourceVersion}-minimal`);
   const markerFile = path.join(versionDir, '.build-complete');
   const customNodePath = path.join(versionDir, 'out', 'Release', 'node');
+  const requiredConfigureArgs = [
+    '--with-intl=small-icu',
+    '--without-npm',
+    '--without-corepack',
+    '--without-inspector',
+    '--without-node-code-cache',
+    '--without-node-snapshot',
+    '--shared-zlib',
+  ];
   
   // Check if already built
   if (fs.existsSync(markerFile) && fs.existsSync(customNodePath)) {
-    console.log(`Using cached custom Node.js build from ${customNodePath}`);
-    const stats = fs.statSync(customNodePath);
-    console.log(`Cached custom Node.js size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-    
-    if (isCI) {
-      // Set outputs for GitHub Actions
-      setOutput('node-path', customNodePath);
-      setOutput('node-size', stats.size);
-      setOutput('cache-hit', 'true');
-    } else {
-      console.log(`\nTo use this custom Node.js with build-native.js:`);
-      console.log(`node build-native.js --custom-node="${customNodePath}"`);
+    let configuredArgs = [];
+    try {
+      const buildInfo = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
+      configuredArgs = buildInfo.configureArgs || [];
+    } catch {
+      console.log('Cached custom Node.js metadata is invalid; rebuilding.');
     }
-    return customNodePath;
+    const semanticConfigureArgs = configuredArgs.filter(arg => arg !== '--ninja');
+    const cacheMatches =
+      semanticConfigureArgs.length === requiredConfigureArgs.length &&
+      semanticConfigureArgs.every((arg, index) => arg === requiredConfigureArgs[index]);
+    if (cacheMatches) {
+      console.log(`Using cached custom Node.js build from ${customNodePath}`);
+      verifyCustomNodeRuntime(customNodePath, platform);
+      const stats = fs.statSync(customNodePath);
+      console.log(`Cached custom Node.js size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+
+      if (isCI) {
+        // Set outputs for GitHub Actions
+        setOutput('node-path', customNodePath);
+        setOutput('node-size', stats.size);
+        setOutput('cache-hit', 'true');
+      } else {
+        console.log(`\nTo use this custom Node.js with build-native.js:`);
+        console.log(`node build-native.js --custom-node="${customNodePath}"`);
+      }
+      return customNodePath;
+    }
+    console.log('Cached custom Node.js configuration changed; rebuilding.');
+    fs.rmSync(versionDir, { recursive: true, force: true });
   }
   
   // Create build directory
@@ -170,15 +233,7 @@ async function buildCustomNode() {
     process.chdir(versionDir);
     
     console.log('Configuring Node.js build...');
-    const configureArgs = [
-      '--without-intl',  // Remove internationalization support
-      '--without-npm',   // Don't include npm
-      '--without-corepack', // Don't include corepack
-      '--without-inspector', // Remove debugging/profiling features
-      '--without-node-code-cache', // Disable code cache
-      '--without-node-snapshot',  // Don't create/use startup snapshot
-      '--shared-zlib',     // Use system zlib instead of building custom
-    ];
+    const configureArgs = [...requiredConfigureArgs];
     
     // Check if ninja is available
     try {
@@ -228,24 +283,30 @@ async function buildCustomNode() {
     }
     
     // Test the binary
-    const version = execSync(`"${customNodePath}" --version`, { encoding: 'utf8' }).trim();
+    const version = verifyCustomNodeRuntime(customNodePath, platform);
     console.log(`Built Node.js version: ${version}`);
     
     // Strip the binary (different command for Linux vs macOS)
     console.log('Stripping Node.js binary...');
     const stripCmd = platform === 'darwin' ? 'strip -S' : 'strip -s';
     execSync(`${stripCmd} "${customNodePath}"`, { stdio: 'inherit' });
-    
+
     // Check final size
     const stats = fs.statSync(customNodePath);
     console.log(`\n✅ Custom Node.js built successfully!`);
     console.log(`Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
     
-    // Compare with system Node.js
+    // Homebrew can use a small launcher, so compare only monolithic Node.js binaries.
     try {
       const systemNodeStats = fs.statSync(process.execPath);
-      const reduction = ((systemNodeStats.size - stats.size) / systemNodeStats.size * 100).toFixed(1);
-      console.log(`Size reduction: ${reduction}% compared to system Node.js`);
+      if (systemNodeStats.size > stats.size) {
+        const reduction = (
+          (systemNodeStats.size - stats.size) /
+          systemNodeStats.size *
+          100
+        ).toFixed(1);
+        console.log(`Size reduction: ${reduction}% compared to system Node.js`);
+      }
     } catch (e) {
       // Ignore if we can't stat system node
     }
@@ -319,4 +380,4 @@ if (require.main === module) {
 }
 
 // Export for use as a module
-module.exports = { buildCustomNode };
+module.exports = { buildCustomNode, DEFAULT_NODE_VERSION };

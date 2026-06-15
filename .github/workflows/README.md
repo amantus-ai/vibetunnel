@@ -147,14 +147,14 @@ node build-native.js --custom-node=".node-builds/node-v24.2.0-minimal/out/Releas
 
 ## Optimization Details
 
-The custom Node.js build removes:
-- International support (`--without-intl`)
+The custom Node.js build reduces:
+- ICU locale data (`--with-intl=small-icu`)
 - npm and corepack (`--without-npm --without-corepack`)
 - Inspector/debugging (`--without-inspector`)
 - Code cache and snapshots
 - Uses `-Os` optimization for size
 
-This reduces the Node.js binary from ~120MB to ~50-60MB.
+This reduces the Node.js binary from ~110MB to ~68MB.
 
 ## Future Improvements
 

@@ -508,9 +508,7 @@ else
     fi
     
     if [[ ! -f "$CUSTOM_NODE_PATH" ]]; then
-        echo -e "${YELLOW}⚠️  Custom Node.js not found. Using system Node.js...${NC}"
-        echo "   Note: Release will work but app size will be larger."
-        # Continue with default Node.js
+        echo -e "${YELLOW}⚠️  Custom Node.js not found; the build will create it.${NC}"
     else
         CUSTOM_NODE_SIZE=$(ls -lh "$CUSTOM_NODE_PATH" | awk '{print $5}')
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
@@ -518,6 +516,10 @@ else
         echo "   Version: $CUSTOM_NODE_VERSION"
         echo "   Size: $CUSTOM_NODE_SIZE"
     fi
+
+    # Release artifacts must never reuse a system-Node or stale web build.
+    export VIBETUNNEL_REQUIRE_CUSTOM_NODE=YES
+    export VIBETUNNEL_FORCE_WEB_BUILD=YES
     
     # For pre-release builds, set the environment variable
     if [[ "$RELEASE_TYPE" != "stable" ]]; then
@@ -567,6 +569,21 @@ else
             echo -e "${RED}❌ Error: Binary is not ARM64: $ARCH_INFO${NC}"
             exit 1
         fi
+    fi
+
+    BUILD_INFO="$WEB_DIR/native/vibetunnel-build.json"
+    if [[ ! -f "$BUILD_INFO" ]]; then
+        echo -e "${RED}❌ Missing custom Node.js build attestation: $BUILD_INFO${NC}"
+        exit 1
+    fi
+    if ! node -e '
+        const fs = require("fs");
+        const info = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        if (info.schemaVersion !== 1 || info.customNode !== true) process.exit(1);
+        console.log(`✅ Embedded server built with custom Node.js ${info.nodeVersion} (${info.arch})`);
+    ' "$BUILD_INFO"; then
+        echo -e "${RED}❌ Release server was not built with custom Node.js${NC}"
+        exit 1
     fi
     
     echo -e "${GREEN}✅ Build complete${NC}"

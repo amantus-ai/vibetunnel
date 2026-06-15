@@ -26,6 +26,7 @@
 const { execFileSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { createNativeRebuildEnv } = require('./scripts/native-rebuild-env.js');
 
 // Parse command line arguments
 const includeSourcemaps = process.argv.includes('--sourcemap');
@@ -198,40 +199,28 @@ async function main() {
       const customVersion = selectedNodeVersion;
       console.log(`Custom Node.js version: ${customVersion}`);
       
-      // Save original PATH and use clean environment
-      const originalPath = process.env.PATH;
-      const cleanEnv = {
-        ...process.env,
-        // Use only system paths to avoid Homebrew contamination
-        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-        npm_config_runtime: 'node',
-        npm_config_target: customVersion.substring(1), // Remove 'v' prefix
-        npm_config_arch: process.arch,
-        npm_config_target_arch: process.arch,
-        npm_config_disturl: 'https://nodejs.org/dist',
-        npm_config_build_from_source: 'true',
-        // Node.js 24 requires C++20
-        CXXFLAGS: '-std=c++20',
-        npm_config_cxxflags: '-std=c++20'
-      };
-      
-      // Remove any Homebrew-related environment variables
-      delete cleanEnv.LDFLAGS;
-      delete cleanEnv.LIBRARY_PATH;
-      delete cleanEnv.CPATH;
-      delete cleanEnv.C_INCLUDE_PATH;
-      delete cleanEnv.CPLUS_INCLUDE_PATH;
-      delete cleanEnv.PKG_CONFIG_PATH;
+      const cleanEnv = createNativeRebuildEnv(
+        process.env,
+        process.execPath,
+        customVersion,
+        process.arch
+      );
       
       console.log('Using clean PATH to avoid Homebrew dependencies during native module rebuild...');
-      
-      execSync(`pnpm rebuild node-pty authenticate-pam`, {
-        stdio: 'inherit',
-        env: cleanEnv
-      });
-      
-      // Restore original PATH
-      process.env.PATH = originalPath;
+
+      const pnpmCli = process.env.npm_execpath;
+      if (pnpmCli && fs.existsSync(pnpmCli)) {
+        execFileSync(process.execPath, [pnpmCli, 'rebuild', 'node-pty', 'authenticate-pam'], {
+          stdio: 'inherit',
+          env: cleanEnv
+        });
+      } else {
+        const pnpmExecutable = execSync('command -v pnpm', { encoding: 'utf8' }).trim();
+        execFileSync(pnpmExecutable, ['rebuild', 'node-pty', 'authenticate-pam'], {
+          stdio: 'inherit',
+          env: cleanEnv
+        });
+      }
     }
 
     // 2. Bundle TypeScript with esbuild
@@ -323,8 +312,10 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     fs.writeFileSync('build/sea-config.json', JSON.stringify(seaConfig, null, 2));
 
     // 4. Generate SEA blob
-    console.log('Generating SEA blob...');
-    execSync('node --experimental-sea-config build/sea-config.json', { stdio: 'inherit' });
+    console.log(`Generating SEA blob with ${selectedNodeVersion}...`);
+    execFileSync(nodeExe, ['--experimental-sea-config', 'build/sea-config.json'], {
+      stdio: 'inherit'
+    });
 
     // 5. Create executable
     console.log('\nCreating executable...');
@@ -372,7 +363,9 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     // Check final size
     const finalStats = fs.statSync(targetExe);
     console.log(`Final executable size: ${(finalStats.size / 1024 / 1024).toFixed(2)} MB`);
-    console.log(`Size reduction: ${((nodeStats.size - finalStats.size) / 1024 / 1024).toFixed(2)} MB`);
+    console.log(
+      `Embedded payload overhead: ${((finalStats.size - nodeStats.size) / 1024 / 1024).toFixed(2)} MB`
+    );
 
     // 9. Copy native modules
     console.log('\nCopying native modules...');
@@ -422,6 +415,17 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
       process.exit(1);
     }
 
+    const buildInfo = {
+      schemaVersion: 1,
+      customNode: Boolean(customNodePath),
+      nodeVersion: selectedNodeVersion,
+      nodeSize: nodeStats.size,
+      executableSize: finalStats.size,
+      platform: process.platform,
+      arch: process.arch
+    };
+    fs.writeFileSync('native/vibetunnel-build.json', `${JSON.stringify(buildInfo, null, 2)}\n`);
+
     console.log('\n✅ Build complete!');
     console.log(`\nPortable executable created in native/ directory:`);
     console.log(`  - vibetunnel (executable)`);
@@ -430,6 +434,7 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
       console.log(`  - spawn-helper`);
     }
     console.log(`  - authenticate_pam.node`);
+    console.log(`  - vibetunnel-build.json`);
     console.log('\nAll files must be kept together in the same directory.');
     console.log('This bundle will work on any machine with the same OS/architecture.');
     

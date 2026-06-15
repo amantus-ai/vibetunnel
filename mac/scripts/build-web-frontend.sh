@@ -2,6 +2,9 @@
 set -e  # Exit on any error
 set -o pipefail  # Exit if any command in a pipeline fails
 
+# Preserve the caller's CI state before exporting CI for noninteractive package commands.
+RUNNING_IN_CI="${CI:-false}"
+
 # Get the project directory
 if [ -z "${SRCROOT}" ]; then
     # If SRCROOT is not set (running outside Xcode), determine it from script location
@@ -12,6 +15,11 @@ else
 fi
 
 WEB_DIR="${PROJECT_DIR}/../web"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/custom-node-policy.sh"
+
+FORCE_WEB_BUILD="${VIBETUNNEL_FORCE_WEB_BUILD:-false}"
+REQUIRE_CUSTOM_NODE="${VIBETUNNEL_REQUIRE_CUSTOM_NODE:-false}"
 HASH_FILE="${BUILT_PRODUCTS_DIR}/.web-content-hash"
 PREVIOUS_HASH_FILE="${BUILT_PRODUCTS_DIR}/.web-content-hash.previous"
 PUBLIC_DIR="${WEB_DIR}/public"
@@ -26,8 +34,12 @@ fi
 
 APP_RESOURCES="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
 
-# In CI with pre-built artifacts, skip the entire build process
-if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
+# In ordinary CI with pre-built artifacts, skip the entire build process.
+# Release automation forces a fresh build so the embedded runtime is verifiable.
+if vibetunnel_is_truthy "$RUNNING_IN_CI" &&
+    ! vibetunnel_is_truthy "$FORCE_WEB_BUILD" &&
+    ! vibetunnel_is_truthy "$REQUIRE_CUSTOM_NODE" &&
+    [ -f "${WEB_DIR}/dist/server/server.js" ]; then
     echo "✓ CI environment detected with pre-built web artifacts"
     echo "✓ Skipping web frontend build entirely"
     
@@ -97,7 +109,9 @@ fi
 NEED_REBUILD=1
 
 # Check if previous hash exists and matches current
-if [ -f "${PREVIOUS_HASH_FILE}" ]; then
+if vibetunnel_is_truthy "$FORCE_WEB_BUILD"; then
+    echo "Forced web rebuild requested."
+elif [ -f "${PREVIOUS_HASH_FILE}" ]; then
     PREVIOUS_HASH=$(cat "${PREVIOUS_HASH_FILE}")
     if [ "${CURRENT_HASH}" = "${PREVIOUS_HASH}" ]; then
         # Also check if the built files actually exist
@@ -122,7 +136,6 @@ fi
 echo "Building web frontend..."
 
 # Setup Node.js PATH (Homebrew, nvm, Volta, fnm)
-SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 # Set environment variable to use clean build environment
 export VIBETUNNEL_BUILD_CLEAN_ENV=true
 source "${SCRIPT_DIR}/node-path-setup.sh"
@@ -135,7 +148,7 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 export PUPPETEER_SKIP_DOWNLOAD=1
 
 # Check if pnpm is available (skip in CI when web artifacts are pre-built)
-if [ "${SKIP_NODE_CHECK}" = "true" ] && [ "${CI}" = "true" ]; then
+if [ "${SKIP_NODE_CHECK}" = "true" ] && vibetunnel_is_truthy "$RUNNING_IN_CI"; then
     echo "✓ Skipping pnpm check in CI (web artifacts are pre-built)"
     echo "✓ This script should not be running in CI - web build should already be complete"
     exit 0
@@ -261,35 +274,43 @@ fi
 # Build the web frontend
 if [ "$BUILD_CONFIG" = "Release" ]; then
     echo "Release build - checking for custom Node.js..."
-    
-    # Skip custom Node.js build in CI to avoid timeout
-    if [ "${CI:-false}" = "true" ]; then
-        echo "CI environment detected - skipping custom Node.js build to avoid timeout"
-        echo "The app will be larger than optimal but will build within CI time limits."
-        pnpm run build 2>&1 | filter_build_output
-    elif [ ! -f "$CUSTOM_NODE_PATH" ]; then
-        echo "Custom Node.js not found, building it for optimal size..."
-        echo "This will take 10-20 minutes on first run but will be cached."
-        node build-custom-node.js --latest 2>&1 | filter_build_output
-        if [ -d "${WEB_DIR}/.node-builds" ]; then
-            CUSTOM_NODE_DIR=$(find "${WEB_DIR}/.node-builds" -name "node-v*-minimal" -type d -exec test -f {}/out/Release/node \; -print 2>/dev/null | sort -V | tail -n1)
-        else
-            CUSTOM_NODE_DIR=""
-        fi
+
+    CUSTOM_NODE_ACTION="$(
+        vibetunnel_custom_node_action \
+            "$BUILD_CONFIG" \
+            "$RUNNING_IN_CI" \
+            "$REQUIRE_CUSTOM_NODE" \
+            "$CUSTOM_NODE_PATH"
+    )"
+
+    if [ "$CUSTOM_NODE_ACTION" = "prepare" ]; then
+        PINNED_CUSTOM_NODE_VERSION=$(node -e 'process.stdout.write(require("./build-custom-node.js").DEFAULT_NODE_VERSION)')
+        echo "Validating the pinned custom Node.js build..."
+        echo "A missing or stale build will be rebuilt and cached."
+        node build-custom-node.js --version="$PINNED_CUSTOM_NODE_VERSION" 2>&1 | filter_build_output
+        CUSTOM_NODE_DIR="${WEB_DIR}/.node-builds/node-v${PINNED_CUSTOM_NODE_VERSION}-minimal"
         CUSTOM_NODE_PATH="${CUSTOM_NODE_DIR}/out/Release/node"
+        if [ -f "$CUSTOM_NODE_PATH" ]; then
+            CUSTOM_NODE_ACTION="use"
+        else
+            CUSTOM_NODE_ACTION="system"
+        fi
     fi
-    
-    if [ "${CI:-false}" != "true" ] && [ -f "$CUSTOM_NODE_PATH" ]; then
+
+    if [ "$CUSTOM_NODE_ACTION" = "use" ]; then
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
         CUSTOM_NODE_SIZE=$(ls -lh "$CUSTOM_NODE_PATH" 2>/dev/null | awk '{print $5}' || echo "unknown")
         echo "Using custom Node.js for release build:"
         echo "  Version: $CUSTOM_NODE_VERSION"
         echo "  Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
         echo "  Path: $CUSTOM_NODE_PATH"
-        pnpm run build -- --custom-node 2>&1 | filter_build_output
+        pnpm run build -- --custom-node="$CUSTOM_NODE_PATH" 2>&1 | filter_build_output
+    elif vibetunnel_is_truthy "$REQUIRE_CUSTOM_NODE"; then
+        echo "error: Release requires a custom Node.js build, but none is available."
+        exit 1
     else
-        echo "WARNING: Custom Node.js build failed, using system Node.js"
-        echo "The app will be larger than optimal."
+        echo "CI build without cached custom Node.js - using system Node.js."
+        echo "Release automation must set VIBETUNNEL_REQUIRE_CUSTOM_NODE=YES."
         pnpm run build 2>&1 | filter_build_output
     fi
 else
@@ -361,6 +382,24 @@ if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
     cp "${NATIVE_DIR}/authenticate_pam.node" "${APP_RESOURCES}/"
 else
     echo "Warning: authenticate_pam.node not found. PAM authentication may not work."
+fi
+
+# Required release builds must carry an explicit custom-runtime attestation.
+if vibetunnel_is_truthy "$REQUIRE_CUSTOM_NODE"; then
+    BUILD_INFO="${NATIVE_DIR}/vibetunnel-build.json"
+    if [ ! -f "$BUILD_INFO" ]; then
+        echo "error: Missing native build attestation at ${BUILD_INFO}"
+        exit 1
+    fi
+    node -e '
+        const fs = require("fs");
+        const info = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        if (info.schemaVersion !== 1 || info.customNode !== true) {
+            console.error("error: Native server was not built with custom Node.js");
+            process.exit(1);
+        }
+        console.log(`Verified custom Node.js ${info.nodeVersion} build (${info.arch})`);
+    ' "$BUILD_INFO"
 fi
 
 # Copy unified vt script
