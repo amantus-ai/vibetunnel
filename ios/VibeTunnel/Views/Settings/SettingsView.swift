@@ -26,7 +26,9 @@ struct SettingsView: View {
         case advanced = "Advanced"
         case about = "About"
 
-        var id: String { self.rawValue }
+        var id: String {
+            self.rawValue
+        }
 
         var icon: String {
             switch self {
@@ -61,7 +63,8 @@ struct SettingsView: View {
                                 self.selectedTab.wrappedValue == tab ? Theme.Colors.primaryAccent : Theme.Colors
                                     .terminalForeground.opacity(0.5))
                             .background(
-                                self.selectedTab.wrappedValue == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear)
+                                self.selectedTab.wrappedValue == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color
+                                    .clear)
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -115,7 +118,9 @@ struct SettingsView: View {
 
 #if DEBUG
 extension SettingsView {
-    var test_selectedTab: Binding<SettingsTab> { self.selectedTab }
+    var test_selectedTab: Binding<SettingsTab> {
+        self.selectedTab
+    }
 }
 #endif
 
