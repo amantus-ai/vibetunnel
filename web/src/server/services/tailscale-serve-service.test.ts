@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TailscaleServeServiceImpl } from './tailscale-serve-service.js';
+import { getTailscaleSearchPaths, TailscaleServeServiceImpl } from './tailscale-serve-service.js';
 
 // Mock the logger
 vi.mock('../../server/utils/logger.js', () => ({
@@ -33,6 +33,23 @@ describe('TailscaleServeService Integration Tests', () => {
       process.env.VIBETUNNEL_SKIP_TAILSCALE = originalSkipTailscale;
     }
     vi.clearAllMocks();
+  });
+
+  describe('Executable discovery', () => {
+    it('includes nix-darwin system and user profile paths', () => {
+      expect(
+        getTailscaleSearchPaths('darwin', {
+          USER: 'alice',
+          HOME: '/Users/alice',
+        })
+      ).toEqual(
+        expect.arrayContaining([
+          '/run/current-system/sw/bin/tailscale',
+          '/etc/profiles/per-user/alice/bin/tailscale',
+          '/Users/alice/.nix-profile/bin/tailscale',
+        ])
+      );
+    });
   });
 
   describe('Exit Code Handling', () => {

@@ -188,15 +188,17 @@ The server runs as a standalone Node.js executable with embedded modules, provid
 **How it works**: Tailscale creates an encrypted WireGuard tunnel between your devices, allowing them to communicate as if they were on the same local network, regardless of their physical location.
 
 #### Basic Setup
-1. Install Tailscale on your Mac: [Download from Mac App Store](https://apps.apple.com/us/app/tailscale/id1475387142) or [Direct Download](https://tailscale.com/download/macos)
+1. Install Tailscale on your Mac: [Download from Mac App Store](https://apps.apple.com/us/app/tailscale/id1475387142), [Direct Download](https://tailscale.com/download/macos), or a CLI/daemon package such as nix-darwin
 2. Install Tailscale on your remote device:
    - **iOS**: [Download from App Store](https://apps.apple.com/us/app/tailscale/id1470499037)
    - **Android**: [Download from Google Play](https://play.google.com/store/apps/details?id=com.tailscale.ipn)
    - **Other platforms**: [All Downloads](https://tailscale.com/download)
 3. Sign in to both devices with the same account
 4. If using VibeTunnel's Tailscale Serve integration, ensure Tailscale Serve is enabled in your [tailnet settings](https://login.tailscale.com/f/serve)
-5. Find your Mac's Tailscale hostname in the Tailscale menu bar app (e.g., `my-mac.tailnet-name.ts.net`)
+5. Find your Mac's Tailscale hostname in the menu bar app or with `tailscale status` (e.g., `my-mac.tailnet-name.ts.net`)
 6. Access VibeTunnel at `http://[your-tailscale-hostname]:4020`
+
+VibeTunnel detects standard CLI locations and nix-darwin system/user profiles, and falls back to `tailscale status --json` when the macOS app API is unavailable.
 
 #### Enhanced Tailscale Features
 

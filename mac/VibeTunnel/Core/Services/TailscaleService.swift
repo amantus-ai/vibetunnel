@@ -23,8 +23,14 @@ final class TailscaleService {
     /// Logger instance for debugging
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleService")
 
-    /// Indicates if Tailscale app is installed on the system
+    /// Indicates if a supported Tailscale installation is available on the system
     private(set) var isInstalled = false
+
+    /// Indicates if the GUI app can be opened directly
+    private(set) var hasGUIApp = false
+
+    /// Path to the Tailscale CLI used for daemon and non-App-Store installations
+    private(set) var tailscaleExecutablePath: String?
 
     /// Indicates if Tailscale is currently running
     private(set) var isRunning = false
@@ -44,11 +50,13 @@ final class TailscaleService {
         }
     }
 
-    /// Checks if Tailscale app is installed
+    /// Checks for the GUI app or a Tailscale CLI installation.
     func checkAppInstallation() -> Bool {
-        let isAppInstalled = FileManager.default.fileExists(atPath: "/Applications/Tailscale.app")
-        self.logger.info("Tailscale app installed: \(isAppInstalled)")
-        return isAppInstalled
+        self.hasGUIApp = FileManager.default.fileExists(atPath: "/Applications/Tailscale.app")
+        self.tailscaleExecutablePath = TailscaleCLI.findExecutable()
+        let installed = self.tailscaleExecutablePath != nil
+        self.logger.info("Tailscale installed: \(installed), GUI app: \(self.hasGUIApp)")
+        return installed
     }
 
     /// Struct to decode Tailscale API response
@@ -135,19 +143,30 @@ final class TailscaleService {
                 self.tailscaleIP = nil
                 self.statusError = "Tailscale is not running"
             }
+        } else if let executablePath = tailscaleExecutablePath,
+                  let cliStatus = await TailscaleCLI.fetchStatus(executablePath: executablePath)
+        {
+            // Open-source daemon installs do not expose the macOS GUI app API.
+            self.isRunning = cliStatus.isRunning
+            self.tailscaleHostname = cliStatus.hostname
+            self.tailscaleIP = cliStatus.ipv4
+            self.statusError = cliStatus.isRunning ? nil : "Tailscale is not running"
+            self.logger
+                .info(
+                    "Tailscale CLI status: running=\(cliStatus.isRunning), hostname=\(cliStatus.hostname ?? "nil"), IP=\(cliStatus.ipv4 ?? "nil")")
         } else {
-            // API not responding - Tailscale not running
+            // Neither the API nor CLI reported a running Tailscale instance.
             self.isRunning = false
             self.tailscaleHostname = nil
             self.tailscaleIP = nil
-            self.statusError = "Please start the Tailscale app"
-            self.logger.info("Tailscale API not responding - app likely not running")
+            self.statusError = "Please start Tailscale"
+            self.logger.info("Tailscale API and CLI status checks failed")
         }
     }
 
     /// Opens the Tailscale app
     func openTailscaleApp() {
-        if let url = URL(string: "file:///Applications/Tailscale.app") {
+        if self.hasGUIApp, let url = URL(string: "file:///Applications/Tailscale.app") {
             NSWorkspace.shared.open(url)
         }
     }

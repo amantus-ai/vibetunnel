@@ -3,6 +3,38 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('tailscale-serve');
 
+export function getTailscaleSearchPaths(
+  platform = process.platform,
+  environment: NodeJS.ProcessEnv = process.env
+): string[] {
+  const nixPaths = [
+    '/run/current-system/sw/bin/tailscale',
+    environment.USER ? `/etc/profiles/per-user/${environment.USER}/bin/tailscale` : undefined,
+    environment.HOME ? `${environment.HOME}/.nix-profile/bin/tailscale` : undefined,
+  ].filter((path): path is string => path !== undefined);
+
+  if (platform === 'darwin') {
+    return [
+      '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
+      '/usr/local/bin/tailscale',
+      '/opt/homebrew/bin/tailscale',
+      ...nixPaths,
+    ];
+  }
+
+  if (platform === 'linux') {
+    return [
+      '/usr/bin/tailscale',
+      '/usr/local/bin/tailscale',
+      '/opt/tailscale/bin/tailscale',
+      '/snap/bin/tailscale',
+      ...nixPaths,
+    ];
+  }
+
+  return nixPaths;
+}
+
 export interface TailscaleServeService {
   start(port: number, enableFunnel?: boolean): Promise<void>;
   stop(): Promise<void>;
@@ -1046,25 +1078,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   private async checkTailscaleAvailable(): Promise<void> {
     const fs = await import('fs/promises');
 
-    // Platform-specific paths to check
-    let tailscalePaths: string[] = [];
-
-    if (process.platform === 'darwin') {
-      // macOS paths
-      tailscalePaths = [
-        '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
-        '/usr/local/bin/tailscale',
-        '/opt/homebrew/bin/tailscale',
-      ];
-    } else if (process.platform === 'linux') {
-      // Linux paths
-      tailscalePaths = [
-        '/usr/bin/tailscale',
-        '/usr/local/bin/tailscale',
-        '/opt/tailscale/bin/tailscale',
-        '/snap/bin/tailscale',
-      ];
-    }
+    const tailscalePaths = getTailscaleSearchPaths();
 
     // Check platform-specific paths first
     for (const path of tailscalePaths) {

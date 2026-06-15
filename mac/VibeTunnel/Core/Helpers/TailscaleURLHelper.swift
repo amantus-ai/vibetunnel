@@ -7,20 +7,7 @@ private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "Ta
 enum TailscaleURLHelper {
     /// Gets the Tailscale IPv4 address for this machine
     static func getTailscaleIP() -> String? {
-        // Try multiple locations for the tailscale binary
-        let possiblePaths = [
-            "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
-            "/opt/homebrew/bin/tailscale",
-            "/usr/local/bin/tailscale",
-        ]
-
-        var tailscalePath: String?
-        for path in possiblePaths where FileManager.default.fileExists(atPath: path) {
-            tailscalePath = path
-            break
-        }
-
-        guard let executablePath = tailscalePath else {
+        guard let executablePath = TailscaleCLI.findExecutable() else {
             logger.info("Tailscale binary not found in any expected location")
             return nil
         }

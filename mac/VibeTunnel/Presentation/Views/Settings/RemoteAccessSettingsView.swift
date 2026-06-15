@@ -395,8 +395,8 @@ private struct TailscaleIntegrationSection: View {
                             }
                         }
 
-                        // Show action button to start Tailscale
-                        if self.tailscaleService.isInstalled, !self.tailscaleService.isRunning {
+                        // GUI installs can be opened directly; daemon installs use their service manager.
+                        if self.tailscaleService.hasGUIApp {
                             Button(action: {
                                 self.tailscaleService.openTailscaleApp()
                             }, label: {
@@ -407,6 +407,10 @@ private struct TailscaleIntegrationSection: View {
                             })
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
+                        } else {
+                            Text("Start Tailscale with your system service manager, then reopen this page.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
 
                         // Show help text about what will happen when enabled
