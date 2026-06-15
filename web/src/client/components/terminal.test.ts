@@ -8,6 +8,7 @@ import {
   waitForElement,
 } from '@/test/utils/component-helpers';
 import { MockFitAddon, MockResizeObserver, MockTerminal } from '@/test/utils/terminal-mocks';
+import { TERMINAL_IDS } from '../utils/terminal-constants';
 
 // Mock ghostty-web before importing the component
 vi.mock('ghostty-web', () => ({
@@ -59,6 +60,17 @@ describe('Terminal', () => {
   });
 
   describe('initialization', () => {
+    it('exposes a stable terminal input target for automation', () => {
+      const terminalInput = element.querySelector(
+        `#${TERMINAL_IDS.TERMINAL_INPUT}`
+      ) as HTMLTextAreaElement | null;
+
+      expect(terminalInput).toBeTruthy();
+      expect(terminalInput?.getAttribute('aria-label')).toBe('Terminal input');
+      expect(terminalInput?.getAttribute('data-testid')).toBe('terminal-input');
+      expect(terminalInput?.hasAttribute('aria-hidden')).toBe(false);
+    });
+
     it('should create terminal with default dimensions', async () => {
       expect(element.getAttribute('session-id')).toBe('test-123');
 

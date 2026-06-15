@@ -745,8 +745,10 @@ export class Terminal extends LitElement {
 
       <div class="terminal-root" @click=${this.handleClick} @paste=${this.handlePaste}>
         <textarea
+          id=${TERMINAL_IDS.TERMINAL_INPUT}
           class="terminal-paste-input"
-          aria-hidden="true"
+          aria-label="Terminal input"
+          data-testid="terminal-input"
           tabindex="-1"
           autocapitalize="off"
           autocomplete="off"

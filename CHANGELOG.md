@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Expose a stable, labeled terminal input node for browser automation and accessibility tools (reported by [@bharath2020](https://github.com/bharath2020)) (#339)
 - Show line insertion and deletion counts alongside file changes in web session Git status badges (thanks [@abhinavgautam01](https://github.com/abhinavgautam01)) (#48)
 - Let mobile users reorder, hide, and choose layouts for terminal quick keys, with browser-local persistence and an unchanged default layout (via [@ndraiman](https://github.com/ndraiman)) (#564)
 - Restore clickable Ctrl+letter shortcuts in the Ghostty terminal renderer (reported by [@manmal](https://github.com/manmal), based on the original implementation by [@hjanuschka](https://github.com/hjanuschka)) (#51)

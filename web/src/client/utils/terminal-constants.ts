@@ -14,6 +14,8 @@ export const TERMINAL_IDS = {
   BUFFER_CONTAINER: 'buffer-container',
   /** Terminal container for terminal.ts component */
   TERMINAL_CONTAINER: 'terminal-container',
+  /** Stable browser-automation target for terminal keyboard input */
+  TERMINAL_INPUT: 'terminal-input',
 } as const;
 
 /**
