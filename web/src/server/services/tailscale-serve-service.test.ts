@@ -130,10 +130,12 @@ describe('TailscaleServeService Integration Tests', () => {
     it('reports a clean idle status before Serve has been configured', async () => {
       const internals = service as unknown as {
         currentPort: number | null;
+        getExecutablePath(): Promise<string>;
         verifyServeConfiguration(port: number): Promise<boolean>;
         checkServeAvailability(): Promise<string>;
       };
       internals.currentPort = null;
+      internals.getExecutablePath = vi.fn().mockRejectedValue(new Error('Tailscale not installed'));
       internals.verifyServeConfiguration = vi.fn().mockResolvedValue(false);
       internals.checkServeAvailability = vi.fn().mockResolvedValue('');
       delete process.env.VIBETUNNEL_SKIP_TAILSCALE;

@@ -604,10 +604,11 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       try {
         await this.getExecutablePath();
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        logger.debug(`Tailscale executable unavailable while Serve is idle: ${error}`);
         return {
           isRunning: false,
-          lastError: message,
+          port: undefined,
+          lastError: undefined,
           isPermanentlyDisabled: false,
           funnelEnabled: false,
           desiredMode: this.desiredFunnel ? 'public' : 'private',
