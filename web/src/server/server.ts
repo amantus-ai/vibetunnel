@@ -1653,6 +1653,11 @@ export async function createApp(): Promise<AppInstance> {
         hqClient.register().catch((err) => {
           logger.error('Failed to register with HQ:', err);
         });
+        // Keep the registration alive: if this host sleeps or briefly loses the
+        // network long enough for HQ to evict it, the heartbeat re-registers it
+        // once it's reachable again (no restart needed). A healthy heartbeat is a
+        // quiet 409 no-op. See HQClient.startHeartbeat.
+        hqClient.startHeartbeat();
       }
 
       // Start control directory watcher

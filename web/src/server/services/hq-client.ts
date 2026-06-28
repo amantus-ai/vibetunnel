@@ -64,6 +64,16 @@ const logger = createLogger('hq-client');
  * @see web/src/server/services/buffer-aggregator.ts for cross-server buffer streaming
  * @see web/src/server/server.ts for HQ mode initialization
  */
+/**
+ * Default interval (ms) between re-registration heartbeats.
+ *
+ * Chosen to be comfortably longer than the HQ's eviction window
+ * (RemoteRegistry evicts a remote after 3 failed 15s health checks, i.e. ~45s),
+ * so a remote that was evicted while its host slept is re-added within one cycle
+ * of coming back online, without hammering the HQ while healthy.
+ */
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 60_000;
+
 export class HQClient {
   private readonly hqUrl: string;
   private readonly remoteId: string;
@@ -72,6 +82,7 @@ export class HQClient {
   private readonly hqUsername: string;
   private readonly hqPassword: string;
   private readonly remoteUrl: string;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Create a new HQ client
@@ -152,6 +163,15 @@ export class HQClient {
       });
 
       if (!response.ok) {
+        // 409 = a remote with this name is already registered. That's the steady
+        // state for the re-registration heartbeat (see startHeartbeat): treat it
+        // as an idempotent success rather than an error, so a healthy remote
+        // doesn't log a failure every heartbeat.
+        if (response.status === 409) {
+          logger.debug(`already registered with hq as ${this.remoteName} (${this.remoteId})`);
+          return;
+        }
+
         const errorText = await response.text();
         logger.error(`registration failed with status ${response.status}: ${errorText}`);
         logger.debug('registration request details:', {
@@ -186,6 +206,54 @@ export class HQClient {
   }
 
   /**
+   * Start a periodic re-registration heartbeat.
+   *
+   * The HQ's {@link RemoteRegistry} health-checks each remote every 15s and
+   * evicts it after 3 consecutive failures (~45s). A remote registers only once
+   * at startup, so if its host sleeps (or briefly loses the network) long enough
+   * to be evicted, it never reappears in HQ until its process restarts — even
+   * after the host wakes and is reachable again.
+   *
+   * This heartbeat closes that gap: it re-calls {@link register} on an interval.
+   * While the remote is still registered the HQ replies 409, which `register`
+   * treats as an idempotent success, so healthy heartbeats are quiet no-ops. Once
+   * the remote has been evicted, the next heartbeat re-registers it (the name is
+   * freed on eviction), so a slept/reconnected host is picked back up within one
+   * interval — no restart required.
+   *
+   * Idempotent: calling it again while a heartbeat is running is a no-op.
+   *
+   * @param intervalMs - Milliseconds between heartbeats (default 60s).
+   */
+  startHeartbeat(intervalMs: number = DEFAULT_HEARTBEAT_INTERVAL_MS): void {
+    if (this.heartbeatTimer) {
+      logger.debug('heartbeat already running; ignoring startHeartbeat');
+      return;
+    }
+    logger.debug(`starting hq re-registration heartbeat every ${intervalMs}ms`);
+    this.heartbeatTimer = setInterval(() => {
+      this.register().catch((err) => {
+        // A transient failure (HQ briefly down, network blip) is expected to
+        // recover on the next beat; log at debug so a flaky link doesn't spam.
+        logger.debug('hq heartbeat re-registration failed (will retry):', err);
+      });
+    }, intervalMs);
+    // Don't let the heartbeat keep the process alive on its own.
+    this.heartbeatTimer.unref?.();
+  }
+
+  /**
+   * Stop the re-registration heartbeat, if running.
+   */
+  stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+      logger.debug('stopped hq re-registration heartbeat');
+    }
+  }
+
+  /**
    * Unregister from HQ and clean up
    *
    * Attempts to gracefully unregister this remote from the HQ server.
@@ -208,6 +276,10 @@ export class HQClient {
    */
   async destroy(): Promise<void> {
     logger.log(chalk.yellow(`unregistering from hq: ${this.remoteName} (${this.remoteId})`));
+
+    // Stop the re-registration heartbeat first so it can't race the unregister
+    // below and immediately re-add this remote during shutdown.
+    this.stopHeartbeat();
 
     try {
       // Try to unregister
