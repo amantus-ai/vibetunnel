@@ -112,6 +112,7 @@ interface Config {
   hqUsername: string | null;
   hqPassword: string | null;
   remoteName: string | null;
+  remoteUrl: string | null;
   allowInsecureHQ: boolean;
   showHelp: boolean;
   showVersion: boolean;
@@ -139,6 +140,37 @@ interface Config {
   ngrokRegion: string | null;
   // Cloudflare tunnel configuration
   enableCloudflare: boolean;
+}
+
+/**
+ * Resolve the URL the HQ will use to connect back to a remote server.
+ *
+ * Precedence:
+ *  1. An explicit `--remote-url` (`remoteUrl`) is used verbatim.
+ *  2. Otherwise the URL is derived from the bind address.
+ *  3. When bound to all interfaces (`0.0.0.0`), the machine's hostname is used.
+ *
+ * The hostname fallback (3) can be unreachable from the HQ — e.g. a mixed-case
+ * or non-DNS local hostname like `My-Laptop.local` that the HQ can't resolve.
+ * That is exactly what `--remote-url` is for: pass a tailnet IP or a resolvable
+ * name so the HQ's back-connection (session reads, input) actually works.
+ *
+ * @param remoteUrl  Explicit override (`--remote-url`), or null/undefined.
+ * @param bindAddress The address the server bound to (`--bind`, default 0.0.0.0).
+ * @param port        The actual listening port.
+ * @param hostname    Injectable for testing; defaults to os.hostname().
+ */
+export function resolveRemoteUrl(
+  remoteUrl: string | null | undefined,
+  bindAddress: string,
+  port: number,
+  hostname: () => string = os.hostname
+): string {
+  if (remoteUrl) {
+    return remoteUrl;
+  }
+  const remoteHost = bindAddress === '0.0.0.0' ? hostname() : bindAddress;
+  return `http://${remoteHost}:${port}`;
 }
 
 // Show help message
@@ -186,6 +218,8 @@ Remote Server Options:
   --hq-username <user>  Username for HQ authentication
   --hq-password <pass>  Password for HQ authentication
   --name <name>         Unique name for this remote server
+  --remote-url <url>    URL the HQ uses to reach this remote (default: derived
+                        from --bind, or the hostname when bound to 0.0.0.0)
   --allow-insecure-hq   Allow HTTP URLs for HQ (default: HTTPS only)
   --no-hq-auth          Disable HQ authentication (for testing only)
 
@@ -236,6 +270,7 @@ function parseArgs(): Config {
     hqUsername: null as string | null,
     hqPassword: null as string | null,
     remoteName: null as string | null,
+    remoteUrl: null as string | null,
     allowInsecureHQ: false,
     showHelp: false,
     showVersion: false,
@@ -306,6 +341,9 @@ function parseArgs(): Config {
     } else if (args[i] === '--name' && i + 1 < args.length) {
       config.remoteName = args[i + 1];
       i++; // Skip the name value in next iteration
+    } else if (args[i] === '--remote-url' && i + 1 < args.length) {
+      config.remoteUrl = args[i + 1];
+      i++; // Skip the URL value in next iteration
     } else if (args[i] === '--allow-insecure-hq') {
       config.allowInsecureHQ = true;
     } else if (args[i] === '--debug') {
@@ -1540,15 +1578,10 @@ export async function createApp(): Promise<AppInstance> {
         config.remoteName &&
         (config.noHqAuth || (config.hqUsername && config.hqPassword))
       ) {
-        // Use the actual bind address for HQ registration
-        // If bind is 0.0.0.0, we need to determine the actual network interface IP
-        let remoteHost = bindAddress;
-        if (bindAddress === '0.0.0.0') {
-          // When binding to all interfaces, use the machine's hostname
-          // This allows HQ to connect from the network
-          remoteHost = os.hostname();
-        }
-        const remoteUrl = `http://${remoteHost}:${actualPort}`;
+        // The URL the HQ will use to connect back to this remote. An explicit
+        // --remote-url wins; otherwise it's derived from --bind (see
+        // resolveRemoteUrl for the hostname-fallback caveat).
+        const remoteUrl = resolveRemoteUrl(config.remoteUrl, bindAddress, actualPort);
         hqClient = new HQClient(
           config.hqUrl,
           config.hqUsername || 'no-auth',
