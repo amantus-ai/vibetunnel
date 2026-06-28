@@ -367,6 +367,21 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         return;
       }
 
+      // HQ never spawns locally: a session must land on a registered remote. This
+      // covers BOTH local-spawn paths below (terminal spawn + web session) but not
+      // the forward-to-remote branch above (which already returned). On a Mac
+      // remote isHQMode is false, so the forwarded request still spawns normally.
+      if (isHQMode && !remoteId) {
+        const count = remoteRegistry?.getRemotes().length ?? 0;
+        logger.warn('session creation refused: HQ mode requires a target remote');
+        return res.status(400).json({
+          error:
+            count === 0
+              ? 'No machines are registered with this HQ, so no session can be created. Start VibeTunnel on a machine first.'
+              : 'A target machine (remoteId) is required in HQ mode.',
+        });
+      }
+
       // If spawn_terminal is true, use the control socket for terminal spawning
       if (spawn_terminal) {
         try {

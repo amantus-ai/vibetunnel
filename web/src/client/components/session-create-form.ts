@@ -25,6 +25,7 @@ import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { type GitRepoInfo, GitService } from '../services/git-service.js';
+import { RemoteService, type RemoteSummary } from '../services/remote-service.js';
 import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { type SessionCreateData, SessionService } from '../services/session-service.js';
@@ -75,6 +76,9 @@ export class SessionCreateForm extends LitElement {
   @state() private showRepositoryDropdown = false;
   @state() private repositories: Repository[] = [];
   @state() private macAppConnected = false;
+  @state() private isHQMode = false;
+  @state() private remotes: RemoteSummary[] = [];
+  @state() private selectedRemoteId = '';
   @state() private showCompletions = false;
   @state() private completions: AutocompleteItem[] = [];
   @state() private selectedCompletionIndex = -1;
@@ -120,6 +124,7 @@ export class SessionCreateForm extends LitElement {
   private gitCheckDebounceTimer?: ReturnType<typeof setTimeout>;
   private autocompleteManager!: AutocompleteManager;
   private repositoryService?: RepositoryService;
+  private remoteService?: RemoteService;
   private sessionService?: SessionService;
   private serverConfigService?: ServerConfigService;
   private gitService?: GitService;
@@ -133,6 +138,7 @@ export class SessionCreateForm extends LitElement {
     // Initialize other services only if authClient is available
     if (this.authClient) {
       this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
+      this.remoteService = new RemoteService(this.authClient);
       this.sessionService = new SessionService(this.authClient);
       this.gitService = new GitService(this.authClient);
     }
@@ -184,7 +190,11 @@ export class SessionCreateForm extends LitElement {
 
       // Check if form is valid (same conditions as Create button)
       const canCreate =
-        !this.disabled && !this.isCreating && this.workingDir?.trim() && this.command?.trim();
+        !this.disabled &&
+        !this.isCreating &&
+        this.workingDir?.trim() &&
+        this.command?.trim() &&
+        !(this.isHQMode && this.remotes.length === 0);
 
       if (canCreate) {
         e.preventDefault();
@@ -296,6 +306,7 @@ export class SessionCreateForm extends LitElement {
       if (response.ok) {
         const status = await response.json();
         this.macAppConnected = status.macAppConnected || false;
+        this.isHQMode = status.isHQMode || false;
         logger.debug('server status:', status);
       }
     } catch (error) {
@@ -313,6 +324,9 @@ export class SessionCreateForm extends LitElement {
       // Initialize services if they haven't been created yet
       if (!this.repositoryService && this.serverConfigService) {
         this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
+      }
+      if (!this.remoteService) {
+        this.remoteService = new RemoteService(this.authClient);
       }
       if (!this.sessionService) {
         this.sessionService = new SessionService(this.authClient);
@@ -363,6 +377,9 @@ export class SessionCreateForm extends LitElement {
 
         // Discover repositories
         this.discoverRepositories();
+
+        // Discover registered machines (HQ mode) for the target picker
+        this.discoverRemotes();
       } else {
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
@@ -454,6 +471,17 @@ export class SessionCreateForm extends LitElement {
       return;
     }
 
+    // HQ mode never spawns locally: without a registered machine there's nowhere
+    // for the session to land. Block before the request (the server also 400s).
+    if (this.isHQMode && this.remotes.length === 0) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'No machines are registered with this HQ. Start VibeTunnel on a machine first.',
+        })
+      );
+      return;
+    }
+
     this.isCreating = true;
 
     // Determine if we're actually spawning a terminal window
@@ -519,6 +547,14 @@ export class SessionCreateForm extends LitElement {
     // Add session name if provided
     if (this.sessionName?.trim()) {
       sessionData.name = this.sessionName.trim();
+    }
+
+    // Target a registered machine when one is selected (HQ mode). The HQ never
+    // spawns locally — the server enforces this with a 400 — so a session must
+    // carry a remoteId there. Outside HQ mode there are no remotes and this is
+    // omitted, preserving local-spawn behavior.
+    if (this.selectedRemoteId) {
+      sessionData.remoteId = this.selectedRemoteId;
     }
 
     // Handle follow mode - only enable when a worktree is selected
@@ -750,6 +786,34 @@ export class SessionCreateForm extends LitElement {
     } finally {
       this.isDiscovering = false;
     }
+  }
+
+  private async discoverRemotes() {
+    // List the machines registered with this HQ. Outside HQ mode the endpoint
+    // 404s and the service returns [], leaving the picker hidden and local-spawn
+    // behavior unchanged.
+    if (!this.remoteService) {
+      this.remotes = [];
+      return;
+    }
+    try {
+      const remotes = await this.remoteService.listRemotes();
+      this.remotes = remotes;
+      // Preselect the first machine so a single-machine HQ needs no interaction,
+      // and the picker always has a valid target. Keep a still-valid selection.
+      if (!this.remotes.some((r) => r.id === this.selectedRemoteId)) {
+        this.selectedRemoteId = this.remotes[0]?.id ?? '';
+      }
+    } catch (error) {
+      logger.error('Failed to discover remotes:', error);
+      this.remotes = [];
+      this.selectedRemoteId = '';
+    }
+  }
+
+  private handleRemoteChange(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    this.selectedRemoteId = select.value;
   }
 
   private handleToggleAutocomplete() {
@@ -1014,11 +1078,47 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private renderMachineSelector() {
+    // HQ with no machines: nowhere to spawn. Warn the user (Create is also
+    // disabled). The server enforces the same invariant with a 400.
+    if (this.isHQMode && this.remotes.length === 0) {
+      return html`
+        <div class="mb-2 sm:mb-3 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg" data-testid="no-machines-warning">
+          <p class="text-[10px] sm:text-xs text-yellow-200">
+            No machines registered. Start VibeTunnel on a machine to create a session.
+          </p>
+        </div>
+      `;
+    }
+
+    // No remotes and not HQ → a plain single-server deploy; no picker needed.
+    if (this.remotes.length === 0) {
+      return nothing;
+    }
+
+    return html`
+      <div class="mb-2 sm:mb-3">
+        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Machine:</label>
+        <select
+          class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+          .value=${this.selectedRemoteId}
+          @change=${this.handleRemoteChange}
+          ?disabled=${this.disabled || this.isCreating}
+          data-testid="machine-select"
+        >
+          ${this.remotes.map(
+            (remote) =>
+              html`<option value=${remote.id} ?selected=${remote.id === this.selectedRemoteId}>${remote.name}</option>`
+          )}
+        </select>
+      </div>
+    `;
+  }
+
   render() {
     if (!this.visible) {
       return html``;
     }
-
     return html`
       <div class="modal-backdrop flex items-center justify-center py-4 sm:py-6 lg:py-8" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
         <div
@@ -1084,6 +1184,8 @@ export class SessionCreateForm extends LitElement {
                 data-testid="session-name-input"
               />
             </div>
+
+            ${this.renderMachineSelector()}
 
             <!-- Command -->
             <div class="mb-2 sm:mb-3">
@@ -1239,7 +1341,8 @@ export class SessionCreateForm extends LitElement {
                   this.disabled ||
                   this.isCreating ||
                   !this.workingDir?.trim() ||
-                  !this.command?.trim()
+                  !this.command?.trim() ||
+                  (this.isHQMode && this.remotes.length === 0)
                 }
                 data-testid="create-session-submit"
               >
