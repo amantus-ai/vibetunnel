@@ -53,6 +53,8 @@ import {
 } from './session-create-form/git-utils.js';
 import type { QuickStartItem } from './session-create-form/quick-start-section.js';
 
+const REMOTE_DEFAULT_WORKING_DIRECTORY = '~/';
+
 const logger = createLogger('session-create-form');
 
 @customElement('session-create-form')
@@ -132,7 +134,7 @@ export class SessionCreateForm extends LitElement {
   private gitService?: GitService;
   private visibleInitializationId = 0;
 
-  async connectedCallback() {
+  connectedCallback() {
     super.connectedCallback();
     // Initialize services - AutocompleteManager handles optional authClient
     this.autocompleteManager = new AutocompleteManager(this.authClient);
@@ -145,10 +147,8 @@ export class SessionCreateForm extends LitElement {
       this.sessionService = new SessionService(this.authClient);
       this.gitService = new GitService(this.authClient);
     }
-    // Load from localStorage when component is first created
-    await this.loadFromLocalStorage();
     // Load server configuration including quick start commands
-    this.loadServerConfig();
+    void this.loadServerConfig();
   }
 
   disconnectedCallback() {
@@ -396,6 +396,8 @@ export class SessionCreateForm extends LitElement {
       }
 
       if (isHQMode) {
+        // Router paths and saved paths may not exist on the selected machine.
+        this.workingDir = REMOTE_DEFAULT_WORKING_DIRECTORY;
         this.clearLocalRepositoryContext();
         return;
       }

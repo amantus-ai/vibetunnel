@@ -260,6 +260,29 @@ describe('SessionCreateForm', () => {
       hqElement.remove();
     });
 
+    it('uses a remote-safe working directory instead of the HQ router default', async () => {
+      fetchMock.clear();
+      fetchMock.mockResponse('/api/config', {
+        repositoryBasePath: '/srv/hq-router',
+      });
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'test',
+      });
+      fetchMock.mockResponse('/api/remotes', [{ id: 'remote-1', name: 'Studio Mac' }]);
+
+      const hqElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+      await waitForAsync();
+      await hqElement.updateComplete;
+
+      expect(hqElement.workingDir).toBe('~/');
+
+      hqElement.remove();
+    });
+
     it('blocks HQ creation when no machine is registered', async () => {
       fetchMock.clear();
       fetchMock.mockResponse('/api/server/status', {
