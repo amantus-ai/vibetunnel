@@ -22,10 +22,12 @@ When a remote server starts with HQ configuration:
 ### 2. Session Management
 
 **Creating Sessions:**
-- Clients can specify a `remoteId` when creating sessions
+- Clients must specify a `remoteId` when creating sessions through HQ
 - HQ forwards the request to the specified remote using the bearer token
 - The remote creates the session locally
 - HQ tracks which sessions belong to which remote
+
+The web New Session form lists registered machines and requires one as the target. Working-directory paths are interpreted on that selected machine. Because repository discovery, directory browsing, and Git worktree helpers are local filesystem operations, the form hides those HQ-router helpers in distributed mode; enter the machine's path directly.
 
 **Session Operations:**
 - All session operations (get info, send input, kill, etc.) are proxied through HQ
@@ -238,6 +240,7 @@ The e2e tests in `src/test/e2e/hq-mode.e2e.test.ts` demonstrate:
 - Always use HTTPS in production (use `--allow-insecure-hq` only for local dev)
 - Use HTTPS for `--remote-url` on untrusted networks because HQ sends the remote bearer token on callback requests
 - Bearer tokens are sensitive - they allow HQ to execute commands on remotes
+- Remote listing and registration responses expose only public machine metadata, never callback bearer tokens
 - HQ credentials should be strong and kept secure
 - Consider network isolation between HQ and remotes
 - Remotes should not be directly accessible from the internet

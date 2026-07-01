@@ -19,16 +19,11 @@ export interface RemoteSummary {
  * new session must target one of them by `remoteId` (the HQ never spawns locally).
  * This service backs the machine picker in the session-create form.
  *
- * `GET /api/remotes` returns 404 when the server is NOT in HQ mode (a plain
- * single-server deploy). That's not an error here — it simply means there are no
- * remotes to choose from, so we return an empty list and the caller falls back to
- * a local session.
- *
  * @example
  * ```typescript
  * const remoteService = new RemoteService(authClient);
  * const remotes = await remoteService.listRemotes();
- * // [] when not in HQ mode; otherwise the registered machines
+ * // Registered machines; callers only invoke this after confirming HQ mode
  * ```
  *
  * @see web/src/server/routes/remotes.ts - Server-side remote registry endpoints
@@ -43,35 +38,36 @@ export class RemoteService {
   /**
    * List the machines registered with this HQ server.
    *
-   * @returns Promise resolving to the registered remotes, or an empty array when
-   *          the server isn't in HQ mode (404) or the request fails.
+   * @returns Promise resolving to the registered remotes.
    *
-   * @throws Never throws - errors are logged and an empty array returned.
+   * @throws When the server cannot provide a valid remote list. Callers must not
+   *         treat transport or authorization failures as an empty HQ.
    */
   async listRemotes(): Promise<RemoteSummary[]> {
-    try {
-      const response = await fetch('/api/remotes', {
-        headers: this.authClient.getAuthHeader(),
-      });
+    const response = await fetch('/api/remotes', {
+      headers: this.authClient.getAuthHeader(),
+    });
 
-      if (response.ok) {
-        const remotes = await response.json();
-        if (!Array.isArray(remotes)) {
-          return [];
-        }
-        return remotes
-          .filter(
-            (r): r is RemoteSummary => r && typeof r.id === 'string' && typeof r.name === 'string'
-          )
-          .map((r) => ({ id: r.id, name: r.name }));
-      }
-
-      // 404 = not in HQ mode (single-server); any non-OK = no remotes to offer.
-      logger.debug(`remotes unavailable (status ${response.status}); treating as none`);
-      return [];
-    } catch (error) {
-      logger.error('Error listing remotes:', error);
-      return [];
+    if (!response.ok) {
+      logger.error(`Failed to list remotes (status ${response.status})`);
+      throw new Error(`Failed to load machines (${response.status})`);
     }
+
+    const remotes: unknown = await response.json();
+    if (!Array.isArray(remotes)) {
+      throw new Error('Failed to load machines: invalid server response');
+    }
+
+    return remotes
+      .filter(
+        (remote): remote is RemoteSummary =>
+          remote !== null &&
+          typeof remote === 'object' &&
+          'id' in remote &&
+          typeof remote.id === 'string' &&
+          'name' in remote &&
+          typeof remote.name === 'string'
+      )
+      .map((remote) => ({ id: remote.id, name: remote.name }));
   }
 }

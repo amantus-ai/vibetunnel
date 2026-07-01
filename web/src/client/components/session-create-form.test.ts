@@ -41,6 +41,11 @@ describe('SessionCreateForm', () => {
 
     // Setup fetch mock
     fetchMock = setupFetchMock();
+    fetchMock.mockResponse('/api/server/status', {
+      macAppConnected: false,
+      isHQMode: false,
+      version: 'test',
+    });
 
     // Create mock auth client
     mockAuthClient = {
@@ -53,6 +58,7 @@ describe('SessionCreateForm', () => {
       <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
     `);
 
+    await waitForAsync();
     await element.updateComplete;
   });
 
@@ -70,6 +76,7 @@ describe('SessionCreateForm', () => {
       expect(element.command).toBe('zsh');
       expect(element.sessionName).toBe('');
       expect(element.isCreating).toBe(false);
+      expect(fetchMock.getCalls().some((call) => call[0] === '/api/remotes')).toBe(false);
     });
 
     it('should load saved values from localStorage', async () => {
@@ -206,6 +213,112 @@ describe('SessionCreateForm', () => {
   });
 
   describe('session creation', () => {
+    it('targets the selected machine in HQ mode', async () => {
+      fetchMock.clear();
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'test',
+      });
+      fetchMock.mockResponse('/api/remotes', [
+        { id: 'remote-1', name: 'Studio Mac' },
+        { id: 'remote-2', name: 'Laptop' },
+      ]);
+      fetchMock.mockResponse('/api/sessions', { sessionId: 'remote-session' });
+
+      const hqElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+      await waitForAsync();
+      await hqElement.updateComplete;
+
+      const machineSelect = hqElement.querySelector<HTMLSelectElement>(
+        '[data-testid="machine-select"]'
+      );
+      expect(machineSelect?.value).toBe('remote-1');
+      expect(hqElement.textContent).toContain('Working Directory on Machine:');
+      expect(hqElement.querySelector('#session-browse-button')).toBeNull();
+      expect(hqElement.querySelector('#session-autocomplete-button')).toBeNull();
+      expect(hqElement.querySelector('git-branch-selector')).toBeNull();
+
+      if (!machineSelect) {
+        throw new Error('Expected HQ machine selector');
+      }
+      machineSelect.value = 'remote-2';
+      machineSelect.dispatchEvent(new Event('change'));
+      hqElement.command = 'zsh';
+      hqElement.workingDir = '~/work';
+      await hqElement.handleCreate();
+
+      const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
+      expect(JSON.parse((sessionCall?.[1]?.body as string) || '{}')).toMatchObject({
+        command: ['zsh'],
+        workingDir: '~/work',
+        remoteId: 'remote-2',
+      });
+
+      hqElement.remove();
+    });
+
+    it('blocks HQ creation when no machine is registered', async () => {
+      fetchMock.clear();
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'test',
+      });
+      fetchMock.mockResponse('/api/remotes', []);
+
+      const hqElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+      await waitForAsync();
+      await hqElement.updateComplete;
+
+      const errorHandler = vi.fn();
+      hqElement.addEventListener('error', errorHandler);
+      await hqElement.handleCreate();
+
+      expect(hqElement.querySelector('[data-testid="no-machines-warning"]')).toBeTruthy();
+      expect(
+        hqElement.querySelector<HTMLButtonElement>('[data-testid="create-session-submit"]')
+          ?.disabled
+      ).toBe(true);
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: expect.stringContaining('No machines are registered') })
+      );
+      expect(fetchMock.getCalls().some((call) => call[0] === '/api/sessions')).toBe(false);
+
+      hqElement.remove();
+    });
+
+    it('blocks creation when machine discovery fails', async () => {
+      fetchMock.clear();
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'test',
+      });
+      fetchMock.mockResponse('/api/remotes', { error: 'offline' }, { status: 503 });
+
+      const hqElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${true}></session-create-form>
+      `);
+      await waitForAsync();
+      await hqElement.updateComplete;
+
+      expect(hqElement.querySelector('[data-testid="machine-load-error"]')).toBeTruthy();
+      expect(
+        hqElement.querySelector<HTMLButtonElement>('[data-testid="create-session-submit"]')
+          ?.disabled
+      ).toBe(true);
+
+      await hqElement.handleCreate();
+      expect(fetchMock.getCalls().some((call) => call[0] === '/api/sessions')).toBe(false);
+
+      hqElement.remove();
+    });
+
     it('should create session with valid data', async () => {
       fetchMock.mockResponse('/api/sessions', {
         sessionId: 'new-session-123',
