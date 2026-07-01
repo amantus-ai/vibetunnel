@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Restored macOS Release builds on Xcode 16.4 by making Pangolin connection-state handling compatible with Swift 6.1.
+
 ## [1.0.0-beta.16] - 2026-06-16
 
 ### Fixed

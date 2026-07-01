@@ -356,16 +356,11 @@ final class PangolinService {
             self.outputBuffer = String(self.outputBuffer.suffix(32768))
         }
 
-        switch Self.connectionState(from: self.outputBuffer) {
-        case true:
-            self.isConnected = true
-            self.statusError = nil
-        case false:
-            self.isConnected = false
-            self.statusError = "Newt could not connect. Check the Pangolin endpoint and site credentials."
-        case nil:
-            break
-        }
+        guard let isConnected = Self.connectionState(from: self.outputBuffer) else { return }
+        self.isConnected = isConnected
+        self.statusError = isConnected
+            ? nil
+            : "Newt could not connect. Check the Pangolin endpoint and site credentials."
     }
 
     private func clearOutputHandlers() {
