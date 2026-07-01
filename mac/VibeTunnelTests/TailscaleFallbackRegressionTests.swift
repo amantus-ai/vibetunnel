@@ -33,7 +33,7 @@ final class TailscaleFallbackRegressionTests {
     @Test(
         .tags(.critical),
         .timeLimit(.minutes(1)))
-    func tailscaleToggleDoesNotAutoDisableAfter10Seconds() async throws {
+    func tailscaleToggleDoesNotAutoDisableAfter10Seconds() async {
         self.logger.info("Testing that Tailscale toggle remains enabled in fallback mode")
 
         // Enable Tailscale Serve in settings
