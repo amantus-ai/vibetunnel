@@ -207,7 +207,7 @@ export class SessionCreateForm extends LitElement {
     }
   };
 
-  private async loadFromLocalStorage() {
+  private async loadFromLocalStorage(initializationId: number): Promise<boolean> {
     const formData = loadSessionFormData();
 
     // Get repository base path from server config to use as default working dir
@@ -219,6 +219,10 @@ export class SessionCreateForm extends LitElement {
         logger.error('Failed to get repository base path from server:', error);
         appRepoBasePath = DEFAULT_REPOSITORY_BASE_PATH;
       }
+    }
+
+    if (!this.isCurrentVisibleInitialization(initializationId)) {
+      return false;
     }
 
     // Always set values, using saved values or defaults
@@ -237,6 +241,7 @@ export class SessionCreateForm extends LitElement {
 
     // Force re-render to update the input values
     this.requestUpdate();
+    return true;
   }
 
   private saveToLocalStorage() {
@@ -294,7 +299,7 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private async checkServerStatus(): Promise<boolean> {
+  private async checkServerStatus(initializationId?: number): Promise<boolean> {
     // Defensive check - authClient should always be provided
     if (!this.authClient) {
       logger.warn('checkServerStatus called without authClient');
@@ -312,6 +317,9 @@ export class SessionCreateForm extends LitElement {
     const status = await response.json();
     if (!status || typeof status.isHQMode !== 'boolean') {
       throw new Error('Failed to load server status: invalid response');
+    }
+    if (initializationId !== undefined && !this.isCurrentVisibleInitialization(initializationId)) {
+      return status.isHQMode;
     }
     this.macAppConnected = status.macAppConnected || false;
     this.isHQMode = status.isHQMode || false;
@@ -384,8 +392,10 @@ export class SessionCreateForm extends LitElement {
     const initializationId = ++this.visibleInitializationId;
 
     try {
-      await this.loadFromLocalStorage();
-      const isHQMode = await this.refreshRemoteTargets();
+      if (!(await this.loadFromLocalStorage(initializationId))) {
+        return;
+      }
+      const isHQMode = await this.refreshRemoteTargets(initializationId);
       if (!this.visible || initializationId !== this.visibleInitializationId) {
         return;
       }
@@ -421,6 +431,10 @@ export class SessionCreateForm extends LitElement {
     this.followMode = false;
     this.followBranch = null;
     this.showFollowMode = false;
+  }
+
+  private isCurrentVisibleInitialization(initializationId: number): boolean {
+    return this.visible && initializationId === this.visibleInitializationId;
   }
 
   private handleWorkingDirChange(e: Event) {
@@ -852,13 +866,17 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private async refreshRemoteTargets(): Promise<boolean> {
+  private async refreshRemoteTargets(initializationId: number): Promise<boolean> {
     this.isLoadingRemoteTargets = true;
     this.remoteTargetError = '';
+    let detectedHQMode = this.isHQMode;
 
     try {
-      const isHQMode = await this.checkServerStatus();
-      if (!isHQMode) {
+      detectedHQMode = await this.checkServerStatus(initializationId);
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return detectedHQMode;
+      }
+      if (!detectedHQMode) {
         this.remotes = [];
         this.selectedRemoteId = '';
         return false;
@@ -869,6 +887,9 @@ export class SessionCreateForm extends LitElement {
       }
 
       const remotes = await this.remoteService.listRemotes();
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return true;
+      }
       this.remotes = remotes;
       // Preselect the first machine so a single-machine HQ needs no interaction,
       // and the picker always has a valid target. Keep a still-valid selection.
@@ -877,14 +898,19 @@ export class SessionCreateForm extends LitElement {
       }
       return true;
     } catch (error) {
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return detectedHQMode;
+      }
       logger.error('Failed to load session targets:', error);
       this.remotes = [];
       this.selectedRemoteId = '';
       this.remoteTargetError =
         'Unable to load the available machines. Check the connection and try again.';
-      return this.isHQMode;
+      return detectedHQMode;
     } finally {
-      this.isLoadingRemoteTargets = false;
+      if (this.isCurrentVisibleInitialization(initializationId)) {
+        this.isLoadingRemoteTargets = false;
+      }
     }
   }
 

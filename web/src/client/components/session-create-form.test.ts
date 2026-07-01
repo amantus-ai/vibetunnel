@@ -283,6 +283,64 @@ describe('SessionCreateForm', () => {
       hqElement.remove();
     });
 
+    it('ignores a machine list response from an earlier form initialization', async () => {
+      fetchMock.clear();
+      fetchMock.mockResponse('/api/config', {
+        repositoryBasePath: '/srv/hq-router',
+      });
+      fetchMock.mockResponse('/api/server/status', {
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'test',
+      });
+
+      let resolveStaleRemotes!: (remotes: Array<{ id: string; name: string }>) => void;
+      const staleRemotes = new Promise<Array<{ id: string; name: string }>>((resolve) => {
+        resolveStaleRemotes = resolve;
+      });
+      const listRemotes = vi
+        .fn()
+        .mockReturnValueOnce(staleRemotes)
+        .mockResolvedValueOnce([{ id: 'remote-current', name: 'Current Mac' }]);
+
+      const hqElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${false}></session-create-form>
+      `);
+      Object.defineProperty(hqElement, 'remoteService', {
+        configurable: true,
+        value: { listRemotes },
+      });
+
+      hqElement.visible = true;
+      await hqElement.updateComplete;
+      await vi.waitFor(() => expect(listRemotes).toHaveBeenCalledTimes(1));
+
+      hqElement.visible = false;
+      await hqElement.updateComplete;
+      hqElement.visible = true;
+      await hqElement.updateComplete;
+      await vi.waitFor(() => expect(listRemotes).toHaveBeenCalledTimes(2));
+      await vi.waitFor(() => {
+        expect(
+          hqElement.querySelector<HTMLSelectElement>('[data-testid="machine-select"]')?.value
+        ).toBe('remote-current');
+      });
+
+      resolveStaleRemotes([{ id: 'remote-stale', name: 'Stale Mac' }]);
+      await waitForAsync();
+      await hqElement.updateComplete;
+
+      const machineSelect = hqElement.querySelector<HTMLSelectElement>(
+        '[data-testid="machine-select"]'
+      );
+      expect(machineSelect?.value).toBe('remote-current');
+      expect(Array.from(machineSelect?.options ?? []).map((option) => option.value)).toEqual([
+        'remote-current',
+      ]);
+
+      hqElement.remove();
+    });
+
     it('blocks HQ creation when no machine is registered', async () => {
       fetchMock.clear();
       fetchMock.mockResponse('/api/server/status', {
