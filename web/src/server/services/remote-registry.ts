@@ -14,6 +14,11 @@ export interface RemoteServer {
   sessionIds: Set<string>; // Track which sessions belong to this remote
 }
 
+export interface RemoteRegistrationResult {
+  remote: RemoteServer;
+  created: boolean;
+}
+
 export class RemoteRegistry {
   private remotes: Map<string, RemoteServer> = new Map();
   private remotesByName: Map<string, RemoteServer> = new Map();
@@ -34,7 +39,19 @@ export class RemoteRegistry {
 
   register(
     remote: Omit<RemoteServer, 'registeredAt' | 'lastHeartbeat' | 'sessionIds'>
-  ): RemoteServer {
+  ): RemoteRegistrationResult {
+    const existingById = this.remotes.get(remote.id);
+    if (existingById) {
+      const isSameRemote =
+        existingById.name === remote.name &&
+        existingById.url === remote.url &&
+        existingById.token === remote.token;
+      if (!isSameRemote) {
+        throw new Error(`Remote with id '${remote.id}' is already registered`);
+      }
+      return { remote: existingById, created: false };
+    }
+
     // Check if a remote with the same name already exists
     if (this.remotesByName.has(remote.name)) {
       throw new Error(`Remote with name '${remote.name}' is already registered`);
@@ -55,7 +72,7 @@ export class RemoteRegistry {
     // Immediately check health of new remote
     this.checkRemoteHealth(registeredRemote);
 
-    return registeredRemote;
+    return { remote: registeredRemote, created: true };
   }
 
   unregister(remoteId: string): boolean {

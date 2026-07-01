@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Quiet logger so the heartbeat's debug/error lines don't clutter test output.
 vi.mock('../utils/logger.js', () => ({
   createLogger: vi.fn(() => ({
     warn: vi.fn(),
@@ -23,6 +22,22 @@ function makeClient() {
   );
 }
 
+function response(status: number): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => `status ${status}`,
+  } as Response;
+}
+
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  const promise = new Promise<Response>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 describe('HQClient re-registration heartbeat', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -38,106 +53,103 @@ describe('HQClient re-registration heartbeat', () => {
     vi.restoreAllMocks();
   });
 
-  const ok = () => ({ ok: true, status: 200, text: async () => '' }) as unknown as Response;
-  const conflict = () =>
-    ({ ok: false, status: 409, text: async () => 'already registered' }) as unknown as Response;
-  const serverError = () =>
-    ({ ok: false, status: 500, text: async () => 'boom' }) as unknown as Response;
-
-  it('re-registers on each interval', async () => {
-    fetchMock.mockResolvedValue(ok());
+  it('registers immediately and after each completed interval', async () => {
+    fetchMock.mockResolvedValue(response(200));
     const client = makeClient();
 
     client.startHeartbeat(1000);
-    expect(fetchMock).toHaveBeenCalledTimes(0);
-
-    await vi.advanceTimersByTimeAsync(1000);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-
     await vi.advanceTimersByTimeAsync(1000);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
     client.stopHeartbeat();
   });
 
-  it('treats a 409 (already registered) as an idempotent success, not a throw', async () => {
-    // The steady state: the remote is still registered, HQ replies 409 every beat.
-    fetchMock.mockResolvedValue(conflict());
+  it('accepts an idempotent 204 refresh but still rejects a name collision', async () => {
     const client = makeClient();
+    fetchMock.mockResolvedValueOnce(response(204)).mockResolvedValueOnce(response(409));
 
-    // register() must resolve (not reject) on 409 so the heartbeat stays quiet.
     await expect(client.register()).resolves.toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledTimes(1); // the manual register above
-
-    client.startHeartbeat(1000);
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(fetchMock).toHaveBeenCalledTimes(4); // 1 manual + 3 beats, no unhandled rejection
-    client.stopHeartbeat();
+    await expect(client.register()).rejects.toThrow('Registration failed (409)');
   });
 
-  it('recovers after eviction: a later beat re-registers once HQ accepts again', async () => {
-    // While registered → 409; after the host slept and HQ evicted it, the POST
-    // succeeds again. The heartbeat must keep firing across that transition.
+  it('recovers after eviction when a later registration is created again', async () => {
     fetchMock
-      .mockResolvedValueOnce(conflict()) // beat 1 — still registered
-      .mockResolvedValueOnce(conflict()) // beat 2 — still registered
-      .mockResolvedValueOnce(ok()); // beat 3 — evicted, re-registered
+      .mockResolvedValueOnce(response(204))
+      .mockResolvedValueOnce(response(204))
+      .mockResolvedValueOnce(response(200));
     const client = makeClient();
 
     client.startHeartbeat(1000);
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     client.stopHeartbeat();
   });
 
-  it('keeps beating through a transient HQ failure', async () => {
-    // A 500 / network blip on one beat must not stop the heartbeat.
+  it('keeps retrying through transient HQ failures', async () => {
     fetchMock
-      .mockResolvedValueOnce(serverError())
+      .mockResolvedValueOnce(response(500))
       .mockRejectedValueOnce(new Error('ECONNREFUSED'))
-      .mockResolvedValue(ok());
+      .mockResolvedValue(response(200));
     const client = makeClient();
 
     client.startHeartbeat(1000);
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     client.stopHeartbeat();
   });
 
-  it('startHeartbeat is idempotent (a second call does not double the cadence)', async () => {
-    fetchMock.mockResolvedValue(ok());
+  it('does not overlap registration requests', async () => {
+    const pending = deferredResponse();
+    fetchMock.mockReturnValueOnce(pending.promise).mockResolvedValue(response(204));
     const client = makeClient();
 
     client.startHeartbeat(1000);
-    client.startHeartbeat(1000); // ignored — already running
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(fetchMock).toHaveBeenCalledTimes(1); // one beat, not two
-    client.stopHeartbeat();
-  });
-
-  it('stopHeartbeat halts further beats', async () => {
-    fetchMock.mockResolvedValue(ok());
-    const client = makeClient();
-
-    client.startHeartbeat(1000);
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(5000);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
+    pending.resolve(response(200));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     client.stopHeartbeat();
-    await vi.advanceTimersByTimeAsync(5000);
-    expect(fetchMock).toHaveBeenCalledTimes(1); // no more beats
   });
 
-  it('destroy() stops the heartbeat (no beat after teardown)', async () => {
-    fetchMock.mockResolvedValue(ok());
+  it('starts only one heartbeat loop', () => {
+    fetchMock.mockReturnValue(new Promise<Response>(() => {}));
     const client = makeClient();
 
     client.startHeartbeat(1000);
-    await client.destroy(); // unregisters + stops heartbeat
-    await vi.advanceTimersByTimeAsync(5000);
+    client.startHeartbeat(1000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    client.stopHeartbeat();
+  });
 
-    // The only fetch was destroy()'s DELETE; no heartbeat POSTs after.
-    const posts = fetchMock.mock.calls.filter(([, init]) => init?.method !== 'DELETE');
-    expect(posts).toHaveLength(0);
+  it('stops scheduled registrations', async () => {
+    fetchMock.mockResolvedValue(response(204));
+    const client = makeClient();
+
+    client.startHeartbeat(1000);
+    await vi.advanceTimersByTimeAsync(0);
+    client.stopHeartbeat();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for an active registration before unregistering during teardown', async () => {
+    const pending = deferredResponse();
+    fetchMock.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(response(200));
+    const client = makeClient();
+
+    client.startHeartbeat(1000);
+    const destroyPromise = client.destroy();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    pending.resolve(response(200));
+    await destroyPromise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.map(([, init]) => init?.method)).toEqual(['POST', 'DELETE']);
   });
 });

@@ -38,8 +38,45 @@ describe('RemoteRegistry health checks', () => {
       name: `remote-${id}`,
       url: `http://remote-${id}.example`,
       token: 'token',
-    });
+    }).remote;
   }
+
+  it('treats an identical remote id as an idempotent registration refresh', () => {
+    fetchMock.mockResolvedValue({ ok: true } as Response);
+    const original = registerRemote('same');
+    const refresh = registry.register({
+      id: original.id,
+      name: original.name,
+      url: original.url,
+      token: original.token,
+    });
+
+    expect(refresh).toEqual({ remote: original, created: false });
+    expect(registry.getRemotes()).toEqual([original]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a different remote that collides by name or id', () => {
+    fetchMock.mockResolvedValue({ ok: true } as Response);
+    const original = registerRemote('original');
+
+    expect(() =>
+      registry.register({
+        id: 'other-id',
+        name: original.name,
+        url: 'http://other.example',
+        token: 'other-token',
+      })
+    ).toThrow('already registered');
+    expect(() =>
+      registry.register({
+        id: original.id,
+        name: original.name,
+        url: 'http://other.example',
+        token: original.token,
+      })
+    ).toThrow('already registered');
+  });
 
   function deferredResponse() {
     let reject!: (reason?: unknown) => void;

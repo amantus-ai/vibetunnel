@@ -1637,7 +1637,7 @@ export async function createApp(): Promise<AppInstance> {
           logger.log(
             chalk.green(`Remote mode: ${config.remoteName} will accept Bearer token for HQ access`)
           );
-          logger.debug(`Bearer token: ${hqClient.getToken()}`);
+          logger.debug('Bearer authentication configured for HQ callbacks');
         }
       }
 
@@ -1650,13 +1650,9 @@ export async function createApp(): Promise<AppInstance> {
       // Register with HQ if configured
       if (hqClient) {
         logger.log(`Registering with HQ at ${config.hqUrl}`);
-        hqClient.register().catch((err) => {
-          logger.error('Failed to register with HQ:', err);
-        });
-        // Keep the registration alive: if this host sleeps or briefly loses the
-        // network long enough for HQ to evict it, the heartbeat re-registers it
-        // once it's reachable again (no restart needed). A healthy heartbeat is a
-        // quiet 409 no-op. See HQClient.startHeartbeat.
+        // Register immediately and keep retrying after each bounded request. If
+        // this host is evicted while asleep, it rejoins after waking without a
+        // VibeTunnel restart. See HQClient.startHeartbeat.
         hqClient.startHeartbeat();
       }
 

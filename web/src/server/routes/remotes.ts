@@ -51,7 +51,11 @@ export function createRemoteRoutes(config: RemoteRoutesConfig): Router {
     logger.debug(`attempting to register remote ${name} (${id}) from ${url}`);
 
     try {
-      const remote = remoteRegistry.register({ id, name, url, token });
+      const { remote, created } = remoteRegistry.register({ id, name, url, token });
+      if (!created) {
+        logger.debug(`remote registration refreshed: ${name} (${id})`);
+        return res.status(204).send();
+      }
       logger.log(chalk.green(`remote registered: ${name} (${id}) from ${url}`));
       res.json({ success: true, remote });
     } catch (error) {

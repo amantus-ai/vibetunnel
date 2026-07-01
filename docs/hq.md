@@ -37,6 +37,7 @@ When a remote server starts with HQ configuration:
 - HQ performs health checks every 15 seconds on all registered remotes
 - Health check: `GET /api/health` with 5-second timeout
 - Failed remotes are automatically unregistered
+- Remotes refresh their registration every 60 seconds and automatically rejoin after sleep or a network interruption
 
 ### 4. Session Discovery
 
@@ -231,7 +232,6 @@ The e2e tests in `src/test/e2e/hq-mode.e2e.test.ts` demonstrate:
 - Health checks use a fixed 15-second interval
 - No built-in load balancing (clients must specify remoteId)
 - Bearer tokens are generated per server startup (not persistent)
-- No automatic reconnection if remote temporarily fails
 
 ## Security Considerations
 

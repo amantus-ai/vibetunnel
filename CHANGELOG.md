@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Let HQ remotes rejoin automatically after sleep or a network interruption without restarting VibeTunnel (thanks [@Ebonsignori](https://github.com/Ebonsignori)) (#698).
+- Stopped HQ registration diagnostics from logging Basic or bearer authentication material.
 - Restored macOS Release builds on Xcode 16.4 by making Pangolin connection-state handling compatible with Swift 6.1.
 
 ## [1.0.0-beta.16] - 2026-06-16
