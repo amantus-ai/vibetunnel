@@ -558,7 +558,8 @@ export class SessionCreateForm extends LitElement {
     this.isCreating = true;
 
     // Determine if we're actually spawning a terminal window
-    const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
+    // HQ does not know whether the selected machine can open a native window.
+    const effectiveSpawnTerminal = !this.isHQMode && this.spawnWindow && this.macAppConnected;
 
     // Determine the working directory and branch
     let effectiveWorkingDir = this.workingDir?.trim() || '';
@@ -1475,7 +1476,7 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Options Section (collapsible) -->
             <form-options-section
-              .macAppConnected=${this.macAppConnected}
+              .macAppConnected=${this.macAppConnected && !this.isHQMode}
               .spawnWindow=${this.spawnWindow}
               .titleMode=${this.titleMode}
               .gitRepoInfo=${this.gitRepoInfo}

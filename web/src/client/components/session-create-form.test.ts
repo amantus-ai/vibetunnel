@@ -216,7 +216,7 @@ describe('SessionCreateForm', () => {
     it('targets the selected machine in HQ mode', async () => {
       fetchMock.clear();
       fetchMock.mockResponse('/api/server/status', {
-        macAppConnected: false,
+        macAppConnected: true,
         isHQMode: true,
         version: 'test',
       });
@@ -240,6 +240,7 @@ describe('SessionCreateForm', () => {
       expect(hqElement.querySelector('#session-browse-button')).toBeNull();
       expect(hqElement.querySelector('#session-autocomplete-button')).toBeNull();
       expect(hqElement.querySelector('git-branch-selector')).toBeNull();
+      expect(hqElement.querySelector('[data-testid="spawn-window-toggle"]')).toBeNull();
 
       if (!machineSelect) {
         throw new Error('Expected HQ machine selector');
@@ -248,12 +249,14 @@ describe('SessionCreateForm', () => {
       machineSelect.dispatchEvent(new Event('change'));
       hqElement.command = 'zsh';
       hqElement.workingDir = '~/work';
+      hqElement.spawnWindow = true;
       await hqElement.handleCreate();
 
       const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
       expect(JSON.parse((sessionCall?.[1]?.body as string) || '{}')).toMatchObject({
         command: ['zsh'],
         workingDir: '~/work',
+        spawn_terminal: false,
         remoteId: 'remote-2',
       });
 
