@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Let HQ remotes advertise a reachable callback origin with `--remote-url`, including validated IPv6 and tailnet addresses (thanks [@Ebonsignori](https://github.com/Ebonsignori)) (#699).
+
 ### Fixed
 
 - Restored macOS Release builds on Xcode 16.4 by making Pangolin connection-state handling compatible with Swift 6.1.

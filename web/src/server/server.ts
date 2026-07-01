@@ -146,9 +146,9 @@ interface Config {
  * Resolve the URL the HQ will use to connect back to a remote server.
  *
  * Precedence:
- *  1. An explicit `--remote-url` (`remoteUrl`) is used verbatim.
+ *  1. An explicit `--remote-url` (`remoteUrl`) is normalized to an origin.
  *  2. Otherwise the URL is derived from the bind address.
- *  3. When bound to all interfaces (`0.0.0.0`), the machine's hostname is used.
+ *  3. When bound to all interfaces (`0.0.0.0` or `::`), the machine's hostname is used.
  *
  * The hostname fallback (3) can be unreachable from the HQ — e.g. a mixed-case
  * or non-DNS local hostname like `My-Laptop.local` that the HQ can't resolve.
@@ -166,11 +166,34 @@ export function resolveRemoteUrl(
   port: number,
   hostname: () => string = os.hostname
 ): string {
-  if (remoteUrl) {
-    return remoteUrl;
+  if (remoteUrl !== null && remoteUrl !== undefined) {
+    return normalizeRemoteUrl(remoteUrl);
   }
-  const remoteHost = bindAddress === '0.0.0.0' ? hostname() : bindAddress;
-  return `http://${remoteHost}:${port}`;
+  const remoteHost = bindAddress === '0.0.0.0' || bindAddress === '::' ? hostname() : bindAddress;
+  const formattedHost =
+    remoteHost.includes(':') && !remoteHost.startsWith('[') ? `[${remoteHost}]` : remoteHost;
+  return `http://${formattedHost}:${port}`;
+}
+
+export function normalizeRemoteUrl(remoteUrl: string): string {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(remoteUrl);
+  } catch {
+    throw new Error('--remote-url must be a valid HTTP or HTTPS URL');
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('--remote-url must use HTTP or HTTPS');
+  }
+  if (parsedUrl.username || parsedUrl.password) {
+    throw new Error('--remote-url must not include credentials');
+  }
+  if (parsedUrl.pathname !== '/' || parsedUrl.search || parsedUrl.hash) {
+    throw new Error('--remote-url must not include a path, query, or fragment');
+  }
+
+  return parsedUrl.origin;
 }
 
 // Show help message
@@ -429,6 +452,20 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
     logger.error('Remote name required when --hq-url is specified');
     logger.error('Use --name to specify a unique name for this remote server');
     process.exit(1);
+  }
+
+  if (config.remoteUrl !== null && !config.hqUrl) {
+    logger.error('--remote-url requires --hq-url');
+    process.exit(1);
+  }
+
+  if (config.remoteUrl !== null) {
+    try {
+      config.remoteUrl = normalizeRemoteUrl(config.remoteUrl);
+    } catch (error) {
+      logger.error(error instanceof Error ? error.message : 'Invalid --remote-url');
+      process.exit(1);
+    }
   }
 
   // Validate HQ URL is HTTPS unless explicitly allowed

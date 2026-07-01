@@ -75,6 +75,14 @@ vibetunnel-server \
   --hq-password secret \
   --name dev-remote \
   --allow-insecure-hq
+
+# Advertise an address that the HQ can resolve and reach
+vibetunnel-server \
+  --hq-url https://hq.example.com \
+  --hq-username admin \
+  --hq-password secret \
+  --name tailnet-remote \
+  --remote-url http://100.64.0.5:4020
 ```
 
 ### Command-Line Options
@@ -89,6 +97,7 @@ vibetunnel-server \
 - `--hq-username` - Username to authenticate with HQ
 - `--hq-password` - Password to authenticate with HQ
 - `--name` - Unique name for this remote server
+- `--remote-url` - HTTP(S) origin the HQ uses to connect back to this remote; defaults to the bind address or hostname
 - `--allow-insecure-hq` - Allow HTTP connections to HQ (dev only)
 - `--no-hq-auth` - Disable HQ authentication (testing only)
 
@@ -218,6 +227,7 @@ The e2e tests in `src/test/e2e/hq-mode.e2e.test.ts` demonstrate:
 ## Limitations
 
 - Remotes must be network-accessible from the HQ server
+- If the default hostname is not resolvable from HQ, set `--remote-url` to a reachable origin such as a tailnet address
 - Health checks use a fixed 15-second interval
 - No built-in load balancing (clients must specify remoteId)
 - Bearer tokens are generated per server startup (not persistent)
@@ -226,6 +236,7 @@ The e2e tests in `src/test/e2e/hq-mode.e2e.test.ts` demonstrate:
 ## Security Considerations
 
 - Always use HTTPS in production (use `--allow-insecure-hq` only for local dev)
+- Use HTTPS for `--remote-url` on untrusted networks because HQ sends the remote bearer token on callback requests
 - Bearer tokens are sensitive - they allow HQ to execute commands on remotes
 - HQ credentials should be strong and kept secure
 - Consider network isolation between HQ and remotes
