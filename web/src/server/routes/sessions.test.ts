@@ -190,7 +190,7 @@ describe('sessions routes', () => {
       });
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should preserve mode discovery when the Mac app connection check fails', async () => {
       // Mock an error in isMacAppConnected
       vi.mocked(controlUnixHandler.isMacAppConnected).mockImplementation(() => {
         throw new Error('Connection check failed');
@@ -200,7 +200,7 @@ describe('sessions routes', () => {
         ptyManager: mockPtyManager,
         terminalManager: mockTerminalManager,
         remoteRegistry: null,
-        isHQMode: false,
+        isHQMode: true,
       });
 
       const routes = (
@@ -226,10 +226,12 @@ describe('sessions routes', () => {
 
       await statusRoute.route.stack[0].handle(mockReq, mockRes);
 
-      expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Failed to get server status',
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'unknown',
       });
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 

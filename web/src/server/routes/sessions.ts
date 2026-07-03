@@ -52,17 +52,22 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   // Server status endpoint
   router.get('/server/status', async (_req, res) => {
     logger.debug('[GET /server/status] Getting server status');
+
+    let macAppConnected = false;
     try {
-      const status: ServerStatus = {
-        macAppConnected: controlUnixHandler.isMacAppConnected(),
-        isHQMode,
-        version: process.env.VERSION || 'unknown',
-      };
-      res.json(status);
+      macAppConnected = controlUnixHandler.isMacAppConnected();
     } catch (error) {
-      logger.error('Failed to get server status:', error);
-      res.status(500).json({ error: 'Failed to get server status' });
+      // The Mac app connection is optional. Keep mode discovery available so a
+      // transient control-socket failure cannot block normal web sessions.
+      logger.warn('Failed to check Mac app connection; reporting disconnected:', error);
     }
+
+    const status: ServerStatus = {
+      macAppConnected,
+      isHQMode,
+      version: process.env.VERSION || 'unknown',
+    };
+    res.json(status);
   });
 
   // Tailscale Serve status endpoint

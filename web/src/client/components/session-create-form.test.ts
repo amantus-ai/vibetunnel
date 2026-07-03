@@ -70,6 +70,34 @@ describe('SessionCreateForm', () => {
   });
 
   describe('initialization', () => {
+    it('hides filesystem controls until server mode is known', async () => {
+      const loadingElement = await fixture<SessionCreateForm>(html`
+        <session-create-form .authClient=${mockAuthClient} .visible=${false}></session-create-form>
+      `);
+      let finishLoading!: (loaded: boolean) => void;
+      Object.defineProperty(loadingElement, 'loadFromLocalStorage', {
+        configurable: true,
+        value: vi.fn(
+          () =>
+            new Promise<boolean>((resolve) => {
+              finishLoading = resolve;
+            })
+        ),
+      });
+
+      loadingElement.visible = true;
+      await loadingElement.updateComplete;
+
+      expect(loadingElement.querySelector('[data-testid="machines-loading"]')).toBeTruthy();
+      expect(loadingElement.querySelector('[data-testid="working-dir-input"]')).toBeNull();
+      expect(loadingElement.querySelector('#session-browse-button')).toBeNull();
+      expect(loadingElement.querySelector('#session-autocomplete-button')).toBeNull();
+      expect(loadingElement.querySelector('git-branch-selector')).toBeNull();
+
+      finishLoading(false);
+      loadingElement.remove();
+    });
+
     it('should create component with default state', () => {
       expect(element).toBeDefined();
       expect(element.workingDir).toBe('~/Documents');

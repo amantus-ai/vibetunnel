@@ -363,6 +363,7 @@ export class SessionCreateForm extends LitElement {
         this.spawnWindow = false;
         this.titleMode = TitleMode.STATIC;
         this.branchSwitchWarning = undefined;
+        this.showFileBrowser = false;
         this.isLoadingRemoteTargets = true;
         this.remoteTargetError = '';
 
@@ -1350,6 +1351,10 @@ export class SessionCreateForm extends LitElement {
               />
             </div>
 
+            ${
+              this.isLoadingRemoteTargets
+                ? nothing
+                : html`
             <!-- Working Directory -->
             <div class="mb-3 sm:mb-4">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
@@ -1463,6 +1468,8 @@ export class SessionCreateForm extends LitElement {
               @create-worktree=${this.handleCreateWorktreeRequest}
             ></git-branch-selector>`
             }
+            `
+            }
 
             <!-- Quick Start Section -->
             <quick-start-section
@@ -1524,7 +1531,7 @@ export class SessionCreateForm extends LitElement {
       </div>
 
       <file-browser
-        .visible=${this.showFileBrowser}
+        .visible=${!this.isLoadingRemoteTargets && !this.isHQMode && this.showFileBrowser}
         .mode=${'select'}
         .session=${{ workingDir: this.workingDir } as Session}
         @directory-selected=${this.handleDirectorySelected}
