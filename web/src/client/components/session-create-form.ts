@@ -25,6 +25,7 @@ import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { type GitRepoInfo, GitService } from '../services/git-service.js';
+import { RemoteService, type RemoteSummary } from '../services/remote-service.js';
 import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { type SessionCreateData, SessionService } from '../services/session-service.js';
@@ -52,6 +53,8 @@ import {
 } from './session-create-form/git-utils.js';
 import type { QuickStartItem } from './session-create-form/quick-start-section.js';
 
+const REMOTE_DEFAULT_WORKING_DIRECTORY = '~/';
+
 const logger = createLogger('session-create-form');
 
 @customElement('session-create-form')
@@ -75,6 +78,11 @@ export class SessionCreateForm extends LitElement {
   @state() private showRepositoryDropdown = false;
   @state() private repositories: Repository[] = [];
   @state() private macAppConnected = false;
+  @state() private isHQMode = false;
+  @state() private remotes: RemoteSummary[] = [];
+  @state() private selectedRemoteId = '';
+  @state() private isLoadingRemoteTargets = true;
+  @state() private remoteTargetError = '';
   @state() private showCompletions = false;
   @state() private completions: AutocompleteItem[] = [];
   @state() private selectedCompletionIndex = -1;
@@ -120,11 +128,13 @@ export class SessionCreateForm extends LitElement {
   private gitCheckDebounceTimer?: ReturnType<typeof setTimeout>;
   private autocompleteManager!: AutocompleteManager;
   private repositoryService?: RepositoryService;
+  private remoteService?: RemoteService;
   private sessionService?: SessionService;
   private serverConfigService?: ServerConfigService;
   private gitService?: GitService;
+  private visibleInitializationId = 0;
 
-  async connectedCallback() {
+  connectedCallback() {
     super.connectedCallback();
     // Initialize services - AutocompleteManager handles optional authClient
     this.autocompleteManager = new AutocompleteManager(this.authClient);
@@ -133,15 +143,12 @@ export class SessionCreateForm extends LitElement {
     // Initialize other services only if authClient is available
     if (this.authClient) {
       this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
+      this.remoteService = new RemoteService(this.authClient);
       this.sessionService = new SessionService(this.authClient);
       this.gitService = new GitService(this.authClient);
     }
-    // Load from localStorage when component is first created
-    await this.loadFromLocalStorage();
-    // Check server status
-    this.checkServerStatus();
     // Load server configuration including quick start commands
-    this.loadServerConfig();
+    void this.loadServerConfig();
   }
 
   disconnectedCallback() {
@@ -184,7 +191,13 @@ export class SessionCreateForm extends LitElement {
 
       // Check if form is valid (same conditions as Create button)
       const canCreate =
-        !this.disabled && !this.isCreating && this.workingDir?.trim() && this.command?.trim();
+        !this.disabled &&
+        !this.isCreating &&
+        !this.isLoadingRemoteTargets &&
+        !this.remoteTargetError &&
+        this.workingDir?.trim() &&
+        this.command?.trim() &&
+        !(this.isHQMode && !this.remotes.some((remote) => remote.id === this.selectedRemoteId));
 
       if (canCreate) {
         e.preventDefault();
@@ -194,7 +207,7 @@ export class SessionCreateForm extends LitElement {
     }
   };
 
-  private async loadFromLocalStorage() {
+  private async loadFromLocalStorage(initializationId: number): Promise<boolean> {
     const formData = loadSessionFormData();
 
     // Get repository base path from server config to use as default working dir
@@ -206,6 +219,10 @@ export class SessionCreateForm extends LitElement {
         logger.error('Failed to get repository base path from server:', error);
         appRepoBasePath = DEFAULT_REPOSITORY_BASE_PATH;
       }
+    }
+
+    if (!this.isCurrentVisibleInitialization(initializationId)) {
+      return false;
     }
 
     // Always set values, using saved values or defaults
@@ -224,6 +241,7 @@ export class SessionCreateForm extends LitElement {
 
     // Force re-render to update the input values
     this.requestUpdate();
+    return true;
   }
 
   private saveToLocalStorage() {
@@ -281,28 +299,32 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private async checkServerStatus() {
+  private async checkServerStatus(initializationId?: number): Promise<boolean> {
     // Defensive check - authClient should always be provided
     if (!this.authClient) {
       logger.warn('checkServerStatus called without authClient');
       this.macAppConnected = false;
-      return;
+      throw new Error('Authentication client is unavailable');
     }
 
-    try {
-      const response = await fetch('/api/server/status', {
-        headers: this.authClient.getAuthHeader(),
-      });
-      if (response.ok) {
-        const status = await response.json();
-        this.macAppConnected = status.macAppConnected || false;
-        logger.debug('server status:', status);
-      }
-    } catch (error) {
-      logger.warn('failed to check server status:', error);
-      // Default to not connected if we can't check
-      this.macAppConnected = false;
+    const response = await fetch('/api/server/status', {
+      headers: this.authClient.getAuthHeader(),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load server status (${response.status})`);
     }
+
+    const status = await response.json();
+    if (!status || typeof status.isHQMode !== 'boolean') {
+      throw new Error('Failed to load server status: invalid response');
+    }
+    if (initializationId !== undefined && !this.isCurrentVisibleInitialization(initializationId)) {
+      return status.isHQMode;
+    }
+    this.macAppConnected = status.macAppConnected || false;
+    this.isHQMode = status.isHQMode || false;
+    logger.debug('server status:', status);
+    return this.isHQMode;
   }
 
   updated(changedProperties: PropertyValues) {
@@ -313,6 +335,9 @@ export class SessionCreateForm extends LitElement {
       // Initialize services if they haven't been created yet
       if (!this.repositoryService && this.serverConfigService) {
         this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
+      }
+      if (!this.remoteService) {
+        this.remoteService = new RemoteService(this.authClient);
       }
       if (!this.sessionService) {
         this.sessionService = new SessionService(this.authClient);
@@ -338,21 +363,13 @@ export class SessionCreateForm extends LitElement {
         this.spawnWindow = false;
         this.titleMode = TitleMode.STATIC;
         this.branchSwitchWarning = undefined;
+        this.showFileBrowser = false;
+        this.isLoadingRemoteTargets = true;
+        this.remoteTargetError = '';
 
-        // Then load from localStorage which may override the defaults
-        // Don't await since we're in updated() lifecycle method
-        this.loadFromLocalStorage()
-          .then(() => {
-            // Check if the loaded working directory is a Git repository
-            // This must happen AFTER localStorage is loaded
-            this.checkGitRepository();
-          })
-          .catch((error) => {
-            logger.error('Failed to load from localStorage:', error);
-          });
-
-        // Re-check server status when form becomes visible
-        this.checkServerStatus();
+        // Load saved values, establish whether this is an HQ, then query only
+        // the filesystem that actually owns the session.
+        void this.initializeVisibleForm();
 
         // Add global keyboard listener
         document.addEventListener('keydown', this.handleGlobalKeyDown);
@@ -360,10 +377,8 @@ export class SessionCreateForm extends LitElement {
         // Set data attributes for testing - both synchronously to avoid race conditions
         this.setAttribute('data-modal-state', 'open');
         this.setAttribute('data-modal-rendered', 'true');
-
-        // Discover repositories
-        this.discoverRepositories();
       } else {
+        this.visibleInitializationId += 1;
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
 
@@ -374,6 +389,55 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private async initializeVisibleForm() {
+    const initializationId = ++this.visibleInitializationId;
+
+    try {
+      if (!(await this.loadFromLocalStorage(initializationId))) {
+        return;
+      }
+      const isHQMode = await this.refreshRemoteTargets(initializationId);
+      if (!this.visible || initializationId !== this.visibleInitializationId) {
+        return;
+      }
+
+      if (this.remoteTargetError) {
+        this.clearLocalRepositoryContext();
+        return;
+      }
+
+      if (isHQMode) {
+        // Router paths and saved paths may not exist on the selected machine.
+        this.workingDir = REMOTE_DEFAULT_WORKING_DIRECTORY;
+        this.clearLocalRepositoryContext();
+        return;
+      }
+
+      await Promise.all([this.checkGitRepository(), this.discoverRepositories()]);
+    } catch (error) {
+      logger.error('Failed to initialize session form:', error);
+    }
+  }
+
+  private clearLocalRepositoryContext() {
+    this.repositories = [];
+    this.showRepositoryDropdown = false;
+    this.showCompletions = false;
+    this.gitRepoInfo = null;
+    this.availableBranches = [];
+    this.currentBranch = '';
+    this.selectedBaseBranch = '';
+    this.availableWorktrees = [];
+    this.selectedWorktree = undefined;
+    this.followMode = false;
+    this.followBranch = null;
+    this.showFollowMode = false;
+  }
+
+  private isCurrentVisibleInitialization(initializationId: number): boolean {
+    return this.visible && initializationId === this.visibleInitializationId;
+  }
+
   private handleWorkingDirChange(e: Event) {
     const input = e.target as HTMLInputElement;
     this.workingDir = input.value;
@@ -382,6 +446,12 @@ export class SessionCreateForm extends LitElement {
         detail: this.workingDir,
       })
     );
+
+    // HQ paths belong to the selected machine. The filesystem helpers below
+    // run on the HTTP server, so using them in HQ mode would inspect the router.
+    if (this.isHQMode) {
+      return;
+    }
 
     // Hide repository dropdown when typing
     this.showRepositoryDropdown = false;
@@ -428,6 +498,9 @@ export class SessionCreateForm extends LitElement {
   }
 
   private handleBrowse() {
+    if (this.isHQMode) {
+      return;
+    }
     logger.debug('handleBrowse called, setting showFileBrowser to true');
     this.showFileBrowser = true;
     this.requestUpdate();
@@ -454,10 +527,40 @@ export class SessionCreateForm extends LitElement {
       return;
     }
 
+    // HQ mode never spawns locally: without a registered machine there's nowhere
+    // for the session to land. Block before the request (the server also 400s).
+    if (this.isLoadingRemoteTargets) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'Wait for VibeTunnel to finish loading the available machines.',
+        })
+      );
+      return;
+    }
+
+    if (this.remoteTargetError) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: this.remoteTargetError,
+        })
+      );
+      return;
+    }
+
+    if (this.isHQMode && !this.remotes.some((remote) => remote.id === this.selectedRemoteId)) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'No machines are registered with this HQ. Start VibeTunnel on a machine first.',
+        })
+      );
+      return;
+    }
+
     this.isCreating = true;
 
     // Determine if we're actually spawning a terminal window
-    const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
+    // HQ does not know whether the selected machine can open a native window.
+    const effectiveSpawnTerminal = !this.isHQMode && this.spawnWindow && this.macAppConnected;
 
     // Determine the working directory and branch
     let effectiveWorkingDir = this.workingDir?.trim() || '';
@@ -519,6 +622,14 @@ export class SessionCreateForm extends LitElement {
     // Add session name if provided
     if (this.sessionName?.trim()) {
       sessionData.name = this.sessionName.trim();
+    }
+
+    // Target a registered machine when one is selected (HQ mode). The HQ never
+    // spawns locally — the server enforces this with a 400 — so a session must
+    // carry a remoteId there. Outside HQ mode there are no remotes and this is
+    // omitted, preserving local-spawn behavior.
+    if (this.selectedRemoteId) {
+      sessionData.remoteId = this.selectedRemoteId;
     }
 
     // Handle follow mode - only enable when a worktree is selected
@@ -736,6 +847,11 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async discoverRepositories() {
+    if (this.isHQMode) {
+      this.repositories = [];
+      return;
+    }
+
     this.isDiscovering = true;
     try {
       // Only proceed if repositoryService is initialized
@@ -752,7 +868,64 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private async refreshRemoteTargets(initializationId: number): Promise<boolean> {
+    this.isLoadingRemoteTargets = true;
+    this.remoteTargetError = '';
+    let detectedHQMode = this.isHQMode;
+
+    try {
+      detectedHQMode = await this.checkServerStatus(initializationId);
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return detectedHQMode;
+      }
+      if (!detectedHQMode) {
+        this.remotes = [];
+        this.selectedRemoteId = '';
+        return false;
+      }
+
+      if (!this.remoteService) {
+        throw new Error('Machine service is unavailable');
+      }
+
+      const remotes = await this.remoteService.listRemotes();
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return true;
+      }
+      this.remotes = remotes;
+      // Preselect the first machine so a single-machine HQ needs no interaction,
+      // and the picker always has a valid target. Keep a still-valid selection.
+      if (!this.remotes.some((r) => r.id === this.selectedRemoteId)) {
+        this.selectedRemoteId = this.remotes[0]?.id ?? '';
+      }
+      return true;
+    } catch (error) {
+      if (!this.isCurrentVisibleInitialization(initializationId)) {
+        return detectedHQMode;
+      }
+      logger.error('Failed to load session targets:', error);
+      this.remotes = [];
+      this.selectedRemoteId = '';
+      this.remoteTargetError =
+        'Unable to load the available machines. Check the connection and try again.';
+      return detectedHQMode;
+    } finally {
+      if (this.isCurrentVisibleInitialization(initializationId)) {
+        this.isLoadingRemoteTargets = false;
+      }
+    }
+  }
+
+  private handleRemoteChange(e: Event) {
+    const select = e.target as HTMLSelectElement;
+    this.selectedRemoteId = select.value;
+  }
+
   private handleToggleAutocomplete() {
+    if (this.isHQMode) {
+      return;
+    }
+
     // If we have text input, toggle the autocomplete
     if (this.workingDir?.trim()) {
       if (this.showCompletions) {
@@ -775,6 +948,12 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async fetchCompletions() {
+    if (this.isHQMode) {
+      this.completions = [];
+      this.showCompletions = false;
+      return;
+    }
+
     const path = this.workingDir?.trim();
     if (!path || path === '') {
       this.completions = [];
@@ -839,6 +1018,11 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async checkGitRepository() {
+    if (this.isHQMode) {
+      this.clearLocalRepositoryContext();
+      return;
+    }
+
     const path = this.workingDir?.trim();
     logger.log(`🔍 Checking Git repository for path: ${path}`);
 
@@ -1014,11 +1198,77 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private renderMachineSelector() {
+    if (this.isLoadingRemoteTargets) {
+      return html`
+        <div
+          class="mb-2 sm:mb-3 p-2 sm:p-3 bg-bg-elevated border border-border/50 rounded-lg"
+          data-testid="machines-loading"
+        >
+          <p class="text-[10px] sm:text-xs text-text-muted">Loading available machines…</p>
+        </div>
+      `;
+    }
+
+    if (this.remoteTargetError) {
+      return html`
+        <div
+          class="mb-2 sm:mb-3 p-2 sm:p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between gap-2"
+          data-testid="machine-load-error"
+        >
+          <p class="text-[10px] sm:text-xs text-red-200">${this.remoteTargetError}</p>
+          <button
+            type="button"
+            class="text-[10px] sm:text-xs text-primary hover:text-primary-hover"
+            @click=${() => void this.initializeVisibleForm()}
+          >
+            Retry
+          </button>
+        </div>
+      `;
+    }
+
+    // HQ with no machines: nowhere to spawn. Warn the user (Create is also
+    // disabled). The server enforces the same invariant with a 400.
+    if (this.isHQMode && this.remotes.length === 0) {
+      return html`
+        <div class="mb-2 sm:mb-3 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg" data-testid="no-machines-warning">
+          <p class="text-[10px] sm:text-xs text-yellow-200">
+            No machines registered. Start VibeTunnel on a machine to create a session.
+          </p>
+        </div>
+      `;
+    }
+
+    // No remotes and not HQ → a plain single-server deploy; no picker needed.
+    if (this.remotes.length === 0) {
+      return nothing;
+    }
+
+    return html`
+      <div class="mb-2 sm:mb-3">
+        <label for="session-machine-select" class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Machine:</label>
+        <select
+          id="session-machine-select"
+          class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+          .value=${this.selectedRemoteId}
+          @change=${this.handleRemoteChange}
+          ?disabled=${this.disabled || this.isCreating}
+          data-testid="machine-select"
+        >
+          ${this.remotes.map(
+            (remote) =>
+              html`<option value=${remote.id} ?selected=${remote.id === this.selectedRemoteId}>${remote.name}</option>`
+          )}
+        </select>
+      </div>
+    `;
+  }
+
   render() {
     if (!this.visible) {
       return html``;
     }
-
     return html`
       <div class="modal-backdrop flex items-center justify-center py-4 sm:py-6 lg:py-8" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
         <div
@@ -1085,6 +1335,8 @@ export class SessionCreateForm extends LitElement {
               />
             </div>
 
+            ${this.renderMachineSelector()}
+
             <!-- Command -->
             <div class="mb-2 sm:mb-3">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Command:</label>
@@ -1099,15 +1351,23 @@ export class SessionCreateForm extends LitElement {
               />
             </div>
 
+            ${
+              this.isLoadingRemoteTargets
+                ? nothing
+                : html`
             <!-- Working Directory -->
             <div class="mb-3 sm:mb-4">
-              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
+              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
+                ${this.isHQMode ? 'Working Directory on Machine:' : 'Working Directory:'}
+              </label>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
                 <div class="relative flex-1">
                   <input
                     type="text"
-                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm w-full pr-24"
+                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm w-full ${
+                      this.isHQMode ? '' : 'pr-24'
+                    }"
                     .value=${this.workingDir}
                     @input=${this.handleWorkingDirChange}
                     @keydown=${this.handleWorkingDirKeydown}
@@ -1118,9 +1378,12 @@ export class SessionCreateForm extends LitElement {
                     data-testid="working-dir-input"
                     autocomplete="off"
                   />
-                  ${this.renderGitBranchIndicator()}
+                  ${this.isHQMode ? nothing : this.renderGitBranchIndicator()}
                 </div>
-                <button
+                ${
+                  this.isHQMode
+                    ? nothing
+                    : html`<button
                   id="session-browse-button"
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
                   @click=${this.handleBrowse}
@@ -1158,24 +1421,34 @@ export class SessionCreateForm extends LitElement {
                       d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
                     />
                   </svg>
-                </button>
+                </button>`
+                }
               </div>
-              <directory-autocomplete
-                .visible=${this.showCompletions}
-                .items=${this.completions}
-                .selectedIndex=${this.selectedCompletionIndex}
-                .isLoading=${this.isLoadingCompletions}
-                @item-selected=${this.handleAutocompleteItemSelected}
-              ></directory-autocomplete>
-              <repository-dropdown
-                .visible=${this.showRepositoryDropdown}
-                .repositories=${this.repositories}
-                @repository-selected=${this.handleRepositorySelected}
-              ></repository-dropdown>
+              ${
+                this.isHQMode
+                  ? nothing
+                  : html`
+                    <directory-autocomplete
+                      .visible=${this.showCompletions}
+                      .items=${this.completions}
+                      .selectedIndex=${this.selectedCompletionIndex}
+                      .isLoading=${this.isLoadingCompletions}
+                      @item-selected=${this.handleAutocompleteItemSelected}
+                    ></directory-autocomplete>
+                    <repository-dropdown
+                      .visible=${this.showRepositoryDropdown}
+                      .repositories=${this.repositories}
+                      @repository-selected=${this.handleRepositorySelected}
+                    ></repository-dropdown>
+                  `
+              }
             </div>
 
             <!-- Git Branch/Worktree Selection (shown when Git repository detected) -->
-            <git-branch-selector
+            ${
+              this.isHQMode
+                ? nothing
+                : html`<git-branch-selector
               .gitRepoInfo=${this.gitRepoInfo}
               .disabled=${this.disabled}
               .isCreating=${this.isCreating}
@@ -1193,7 +1466,10 @@ export class SessionCreateForm extends LitElement {
               @branch-changed=${this.handleBranchChanged}
               @worktree-changed=${this.handleWorktreeChanged}
               @create-worktree=${this.handleCreateWorktreeRequest}
-            ></git-branch-selector>
+            ></git-branch-selector>`
+            }
+            `
+            }
 
             <!-- Quick Start Section -->
             <quick-start-section
@@ -1207,7 +1483,7 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Options Section (collapsible) -->
             <form-options-section
-              .macAppConnected=${this.macAppConnected}
+              .macAppConnected=${this.macAppConnected && !this.isHQMode}
               .spawnWindow=${this.spawnWindow}
               .titleMode=${this.titleMode}
               .gitRepoInfo=${this.gitRepoInfo}
@@ -1238,8 +1514,12 @@ export class SessionCreateForm extends LitElement {
                 ?disabled=${
                   this.disabled ||
                   this.isCreating ||
+                  this.isLoadingRemoteTargets ||
+                  !!this.remoteTargetError ||
                   !this.workingDir?.trim() ||
-                  !this.command?.trim()
+                  !this.command?.trim() ||
+                  (this.isHQMode &&
+                    !this.remotes.some((remote) => remote.id === this.selectedRemoteId))
                 }
                 data-testid="create-session-submit"
               >
@@ -1251,7 +1531,7 @@ export class SessionCreateForm extends LitElement {
       </div>
 
       <file-browser
-        .visible=${this.showFileBrowser}
+        .visible=${!this.isLoadingRemoteTargets && !this.isHQMode && this.showFileBrowser}
         .mode=${'select'}
         .session=${{ workingDir: this.workingDir } as Session}
         @directory-selected=${this.handleDirectorySelected}

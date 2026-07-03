@@ -52,17 +52,22 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
   // Server status endpoint
   router.get('/server/status', async (_req, res) => {
     logger.debug('[GET /server/status] Getting server status');
+
+    let macAppConnected = false;
     try {
-      const status: ServerStatus = {
-        macAppConnected: controlUnixHandler.isMacAppConnected(),
-        isHQMode,
-        version: process.env.VERSION || 'unknown',
-      };
-      res.json(status);
+      macAppConnected = controlUnixHandler.isMacAppConnected();
     } catch (error) {
-      logger.error('Failed to get server status:', error);
-      res.status(500).json({ error: 'Failed to get server status' });
+      // The Mac app connection is optional. Keep mode discovery available so a
+      // transient control-socket failure cannot block normal web sessions.
+      logger.warn('Failed to check Mac app connection; reporting disconnected:', error);
     }
+
+    const status: ServerStatus = {
+      macAppConnected,
+      isHQMode,
+      version: process.env.VERSION || 'unknown',
+    };
+    res.json(status);
   });
 
   // Tailscale Serve status endpoint
@@ -365,6 +370,21 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         // Forward the complete response (maintains compatibility with newer/older servers)
         res.json(result);
         return;
+      }
+
+      // HQ never spawns locally: a session must land on a registered remote. This
+      // covers BOTH local-spawn paths below (terminal spawn + web session) but not
+      // the forward-to-remote branch above (which already returned). On a Mac
+      // remote isHQMode is false, so the forwarded request still spawns normally.
+      if (isHQMode && !remoteId) {
+        const count = remoteRegistry?.getRemotes().length ?? 0;
+        logger.warn('session creation refused: HQ mode requires a target remote');
+        return res.status(400).json({
+          error:
+            count === 0
+              ? 'No machines are registered with this HQ, so no session can be created. Start VibeTunnel on a machine first.'
+              : 'A target machine (remoteId) is required in HQ mode.',
+        });
       }
 
       // If spawn_terminal is true, use the control socket for terminal spawning

@@ -11,6 +11,17 @@ interface RemoteRoutesConfig {
   isHQMode: boolean;
 }
 
+function serializeRemote(remote: ReturnType<RemoteRegistry['getRemotes']>[number]) {
+  return {
+    id: remote.id,
+    name: remote.name,
+    url: remote.url,
+    registeredAt: remote.registeredAt,
+    lastHeartbeat: remote.lastHeartbeat,
+    sessionIds: Array.from(remote.sessionIds),
+  };
+}
+
 export function createRemoteRoutes(config: RemoteRoutesConfig): Router {
   const router = Router();
   const { remoteRegistry, isHQMode } = config;
@@ -24,12 +35,9 @@ export function createRemoteRoutes(config: RemoteRoutesConfig): Router {
 
     const remotes = remoteRegistry.getRemotes();
     logger.debug(`listing ${remotes.length} registered remotes`);
-    // Convert Set to Array for JSON serialization
-    const remotesWithArraySessionIds = remotes.map((remote) => ({
-      ...remote,
-      sessionIds: Array.from(remote.sessionIds),
-    }));
-    res.json(remotesWithArraySessionIds);
+    // The registry's bearer token authorizes command execution on a remote.
+    // Never serialize it to browser clients.
+    res.json(remotes.map(serializeRemote));
   });
 
   // HQ Mode: Register a new remote
@@ -57,7 +65,7 @@ export function createRemoteRoutes(config: RemoteRoutesConfig): Router {
         return res.status(204).send();
       }
       logger.log(chalk.green(`remote registered: ${name} (${id}) from ${url}`));
-      res.json({ success: true, remote });
+      res.json({ success: true, remote: serializeRemote(remote) });
     } catch (error) {
       if (error instanceof Error && error.message.includes('already registered')) {
         return res.status(409).json({ error: error.message });

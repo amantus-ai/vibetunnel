@@ -190,7 +190,7 @@ describe('sessions routes', () => {
       });
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should preserve mode discovery when the Mac app connection check fails', async () => {
       // Mock an error in isMacAppConnected
       vi.mocked(controlUnixHandler.isMacAppConnected).mockImplementation(() => {
         throw new Error('Connection check failed');
@@ -200,7 +200,7 @@ describe('sessions routes', () => {
         ptyManager: mockPtyManager,
         terminalManager: mockTerminalManager,
         remoteRegistry: null,
-        isHQMode: false,
+        isHQMode: true,
       });
 
       const routes = (
@@ -226,10 +226,12 @@ describe('sessions routes', () => {
 
       await statusRoute.route.stack[0].handle(mockReq, mockRes);
 
-      expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Failed to get server status',
+        macAppConnected: false,
+        isHQMode: true,
+        version: 'unknown',
       });
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -1067,6 +1069,125 @@ describe('sessions routes', () => {
         // remoteId should be excluded to prevent recursion
       });
       expect(requestBody.remoteId).toBeUndefined();
+    });
+
+    it('should refuse to spawn locally in HQ mode when no remoteId is given (remotes registered)', async () => {
+      // One remote is registered, but the request omits remoteId. HQ must never
+      // spawn locally — reject with 400 and create nothing.
+      mockRemoteRegistry.getRemotes = vi
+        .fn()
+        .mockReturnValue([{ id: 'remote-1', name: 'mac-mini' }]);
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        remoteRegistry: mockRemoteRegistry,
+        isHQMode: true,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+          // no remoteId
+        },
+      } as Request;
+
+      let statusCode = 0;
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn((code: number) => {
+          statusCode = code;
+          return mockRes;
+        }),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      expect(statusCode).toBe(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: 'A target machine (remoteId) is required in HQ mode.',
+      });
+      // Crucially, no local session was spawned.
+      expect(mockPtyManager.createSession).not.toHaveBeenCalled();
+      // And nothing was forwarded to a remote either.
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('should explain there are no machines when HQ has zero remotes and no remoteId', async () => {
+      // Zero remotes registered: the error guides the user to start VibeTunnel
+      // on a machine first, and still creates nothing.
+      mockRemoteRegistry.getRemotes = vi.fn().mockReturnValue([]);
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        remoteRegistry: mockRemoteRegistry,
+        isHQMode: true,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+        },
+      } as Request;
+
+      let statusCode = 0;
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn((code: number) => {
+          statusCode = code;
+          return mockRes;
+        }),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      expect(statusCode).toBe(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error:
+          'No machines are registered with this HQ, so no session can be created. Start VibeTunnel on a machine first.',
+      });
+      expect(mockPtyManager.createSession).not.toHaveBeenCalled();
     });
   });
 });
