@@ -166,6 +166,9 @@ importers:
       concurrently:
         specifier: ^10.0.3
         version: 10.0.3
+      dompurify:
+        specifier: ^3.4.11
+        version: 3.4.11
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
