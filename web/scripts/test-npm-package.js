@@ -2,6 +2,7 @@
 
 const { execFileSync, spawn } = require('child_process');
 const fs = require('fs');
+const http = require('http');
 const net = require('net');
 const os = require('os');
 const path = require('path');
@@ -15,7 +16,13 @@ if (!packagePath) {
 
 const absolutePackagePath = path.resolve(packagePath);
 const expectedVersion = require('../package.json').version;
+const domPurifyEntry = require.resolve('dompurify');
+const expectedDomPurifyVersion = JSON.parse(
+  fs.readFileSync(path.join(path.dirname(domPurifyEntry), '..', 'package.json'), 'utf8')
+).version;
 const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vibetunnel-npm-smoke-'));
+const controlTmpDir = process.platform === 'win32' ? os.tmpdir() : '/tmp';
+const controlDir = fs.mkdtempSync(path.join(controlTmpDir, 'vtn-'));
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const cli = path.join(
   installDir,
@@ -68,6 +75,90 @@ async function waitForSessionText(baseUrl, sessionId, marker) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Session text did not contain ${marker}; last response: ${lastText}`);
+}
+
+function listUploads(uploadsDir) {
+  return fs.existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
+}
+
+async function abortPartialUpload(baseUrl, uploadsDir, expectedFiles) {
+  const boundary = 'vibetunnel-aborted-upload-smoke';
+  const request = http.request(`${baseUrl}/api/files/upload`, {
+    method: 'POST',
+    headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+  });
+  request.on('error', () => {
+    // Destroying the request below intentionally resets the connection.
+  });
+  request.write(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="partial.txt"\r\nContent-Type: text/plain\r\n\r\n`
+  );
+  request.write(Buffer.alloc(64 * 1024, 'x'));
+
+  let partialObserved = false;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (listUploads(uploadsDir).length > expectedFiles) {
+      partialObserved = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  request.destroy();
+  if (!partialObserved) throw new Error('Aborted upload did not create a partial file');
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (listUploads(uploadsDir).length === expectedFiles) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Aborted upload left files behind: ${listUploads(uploadsDir).join(', ')}`);
+}
+
+async function testFileUploads(baseUrl, controlDir) {
+  const uploadsDir = path.join(controlDir, 'uploads');
+  const form = new FormData();
+  form.append('file', new Blob(['packaged upload smoke']), 'smoke.txt');
+  const uploadResponse = await fetch(`${baseUrl}/api/files/upload`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`File upload failed: ${uploadResponse.status} ${await uploadResponse.text()}`);
+  }
+  const upload = await uploadResponse.json();
+  if (fs.readFileSync(upload.path, 'utf8') !== 'packaged upload smoke') {
+    throw new Error('Uploaded file content did not match');
+  }
+
+  const nestedForm = new FormData();
+  nestedForm.append('a[b]', 'rejected');
+  const nestedResponse = await fetch(`${baseUrl}/api/files/upload`, {
+    method: 'POST',
+    body: nestedForm,
+    signal: AbortSignal.timeout(5000),
+  });
+  if (nestedResponse.ok) throw new Error('Nested multipart field was not rejected');
+
+  await abortPartialUpload(baseUrl, uploadsDir, 1);
+
+  const deleteResponse = await fetch(`${baseUrl}/api/files/${upload.filename}`, {
+    method: 'DELETE',
+  });
+  if (!deleteResponse.ok || listUploads(uploadsDir).length !== 0) {
+    throw new Error('Uploaded smoke-test file was not deleted');
+  }
+}
+
+async function testMonacoSanitizer(baseUrl) {
+  const response = await fetch(`${baseUrl}/monaco-editor/monaco.js`);
+  if (!response.ok) throw new Error(`Monaco bundle request failed: ${response.status}`);
+  const bundle = await response.text();
+  if (
+    !bundle.includes(`DOMPurify ${expectedDomPurifyVersion}`) ||
+    bundle.includes('DOMPurify 3.2.7')
+  ) {
+    throw new Error('Served Monaco bundle does not contain the patched DOMPurify version');
+  }
 }
 
 function encodeSubscribeFrame(sessionId) {
@@ -176,7 +267,7 @@ async function main() {
     const baseUrl = `http://127.0.0.1:${port}`;
     server = spawn(cli, ['--port', String(port), '--no-auth'], {
       cwd: installDir,
-      env: { ...process.env, VIBETUNNEL_VERBOSE: 'debug' },
+      env: { ...process.env, VIBETUNNEL_CONTROL_DIR: controlDir, VIBETUNNEL_VERBOSE: 'debug' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     server.stdout.on('data', (chunk) => {
@@ -190,6 +281,8 @@ async function main() {
     if (health.status !== 'healthy' || health.version !== expectedVersion) {
       throw new Error(`Unexpected health response: ${JSON.stringify(health)}`);
     }
+    await testMonacoSanitizer(baseUrl);
+    await testFileUploads(baseUrl, controlDir);
 
     const marker = `npm-package-runtime-${process.platform}-${process.arch}`;
     const createResponse = await fetch(`${baseUrl}/api/sessions`, {
@@ -202,14 +295,19 @@ async function main() {
       }),
     });
     if (!createResponse.ok) {
-      throw new Error(`Session creation failed: ${createResponse.status} ${await createResponse.text()}`);
+      throw new Error(
+        `Session creation failed: ${createResponse.status} ${await createResponse.text()}`
+      );
     }
     const { sessionId } = await createResponse.json();
     await waitForSessionText(baseUrl, sessionId, marker);
     const snapshotBytes = await waitForSnapshot(baseUrl, sessionId);
     await fetch(`${baseUrl}/api/sessions/${sessionId}`, { method: 'DELETE' });
 
-    if (stderr.includes('ghostty-web wasm not found') || stderr.includes('Failed to init terminal')) {
+    if (
+      stderr.includes('ghostty-web wasm not found') ||
+      stderr.includes('Failed to init terminal')
+    ) {
       throw new Error(`Packaged terminal initialization failed:\n${stderr}`);
     }
 
@@ -220,7 +318,9 @@ async function main() {
     server = undefined;
   } catch (error) {
     const detail = error instanceof Error ? error.stack || error.message : String(error);
-    throw new Error(`${detail}\nPackaged server stdout:\n${stdout}\nPackaged server stderr:\n${stderr}`);
+    throw new Error(
+      `${detail}\nPackaged server stdout:\n${stdout}\nPackaged server stderr:\n${stderr}`
+    );
   } finally {
     if (server && isRunning(server)) {
       server.kill('SIGTERM');
@@ -234,6 +334,7 @@ async function main() {
       if (isRunning(server)) server.kill('SIGKILL');
     }
     fs.rmSync(installDir, { recursive: true, force: true });
+    fs.rmSync(controlDir, { recursive: true, force: true });
   }
 }
 

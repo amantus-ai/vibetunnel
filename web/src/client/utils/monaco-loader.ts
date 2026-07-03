@@ -13,10 +13,6 @@ const logger = createLogger('monaco-loader');
 declare global {
   interface Window {
     monaco: typeof import('monaco-editor');
-    require: {
-      (dependencies: string[], callback: (...args: unknown[]) => void): void;
-      config: (config: { paths: { [key: string]: string } }) => void;
-    };
   }
 }
 
@@ -25,39 +21,46 @@ let isInitialized = false;
 let loadingPromise: Promise<void> | null = null;
 
 /**
- * Load Monaco Editor using AMD loader
+ * Load the standalone Monaco ESM bundle.
  */
 async function loadMonacoEditor(): Promise<void> {
   if (loadingPromise) return loadingPromise;
 
+  // Disable workers - they interfere with diff computation. Monaco falls back
+  // to synchronous mode, which is sufficient for the file editor.
+  window.MonacoEnvironment = {
+    getWorker: (_workerId: string, _label: string): Worker => new Worker('data:,'),
+  };
+
   loadingPromise = new Promise((resolve, reject) => {
-    // Create script tag for loader.js
+    let stylesheetPromise = Promise.resolve();
+    if (!document.querySelector('link[href="/monaco-editor/monaco.css"]')) {
+      stylesheetPromise = new Promise((resolveStylesheet, rejectStylesheet) => {
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = '/monaco-editor/monaco.css';
+        stylesheet.onload = () => resolveStylesheet();
+        stylesheet.onerror = () => rejectStylesheet(new Error('Failed to load Monaco stylesheet'));
+        document.head.appendChild(stylesheet);
+      });
+    }
+
     const loaderScript = document.createElement('script');
-    loaderScript.src = '/monaco-editor/vs/loader.js';
+    loaderScript.type = 'module';
+    loaderScript.src = '/monaco-editor/monaco.js';
 
-    loaderScript.onload = () => {
-      // Configure require
-      window.require.config({
-        paths: {
-          vs: '/monaco-editor/vs',
-        },
-      });
-
-      // Disable workers - they interfere with diff computation
-      // Monaco will fall back to synchronous mode which works fine
-      window.MonacoEnvironment = {
-        getWorker: (_workerId: string, _label: string): Worker => {
-          // Return a dummy worker that will never be used
-          // Monaco will fall back to synchronous mode
-          return new Worker('data:,');
-        },
-      };
-
-      // Load monaco
-      window.require(['vs/editor/editor.main'], () => {
-        logger.debug('Monaco Editor loaded via AMD');
+    loaderScript.onload = async () => {
+      try {
+        await stylesheetPromise;
+        if (!window.monaco) {
+          reject(new Error('Monaco bundle loaded without initializing the editor API'));
+          return;
+        }
+        logger.debug('Monaco Editor loaded via ESM');
         resolve();
-      });
+      } catch (error) {
+        reject(error);
+      }
     };
 
     loaderScript.onerror = () => {

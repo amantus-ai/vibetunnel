@@ -62,6 +62,7 @@ const upload = multer({
   fileFilter,
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit for general files
+    fieldNestingDepth: 0, // This endpoint accepts only the flat `file` field.
   },
 });
 

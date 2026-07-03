@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Updated file-upload dependencies, rebuilt Monaco against a patched sanitizer, and removed an unused vulnerable proxy dependency.
 - Kept Tailscale CLI status timeouts responsive when the Swift concurrency executor is saturated.
 - Let HQ remotes rejoin automatically after sleep or a network interruption without restarting VibeTunnel (thanks [@Ebonsignori](https://github.com/Ebonsignori)) (#698).
 - Stopped HQ registration diagnostics from logging Basic or bearer authentication material.
