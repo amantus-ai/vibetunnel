@@ -71,7 +71,7 @@ struct TailscaleCLITests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let executable = directory.appendingPathComponent("tailscale")
-        try Data("#!/bin/sh\ntrap '' TERM\nwhile :; do :; done\n".utf8).write(to: executable)
+        try Data("#!/bin/sh\ntrap '' TERM\nexec /bin/sleep 30\n".utf8).write(to: executable)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
 
         let clock = ContinuousClock()
