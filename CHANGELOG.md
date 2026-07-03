@@ -9,6 +9,7 @@
 ### Fixed
 
 - Require the web session form to select a registered HQ machine, without exposing remote callback tokens or the HQ router's filesystem as machine-local data (thanks [@Ebonsignori](https://github.com/Ebonsignori)).
+- Kept Tailscale CLI status timeouts responsive when the Swift concurrency executor is saturated.
 - Let HQ remotes rejoin automatically after sleep or a network interruption without restarting VibeTunnel (thanks [@Ebonsignori](https://github.com/Ebonsignori)) (#698).
 - Stopped HQ registration diagnostics from logging Basic or bearer authentication material.
 - Restored macOS Release builds on Xcode 16.4 by making Pangolin connection-state handling compatible with Swift 6.1.

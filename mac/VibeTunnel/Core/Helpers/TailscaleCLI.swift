@@ -67,16 +67,23 @@ enum TailscaleCLI {
 
             do {
                 try process.run()
-                let timeoutTask = Task.detached(priority: .utility) {
-                    try? await Task.sleep(for: timeout)
-                    guard !Task.isCancelled, process.isRunning else { return }
+                let timeoutWorkItem = DispatchWorkItem {
+                    guard process.isRunning else { return }
                     process.terminate()
-                    try? await Task.sleep(for: .milliseconds(250))
-                    if process.isRunning {
-                        kill(process.processIdentifier, SIGKILL)
+                    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.25) {
+                        if process.isRunning {
+                            kill(process.processIdentifier, SIGKILL)
+                        }
                     }
                 }
-                defer { timeoutTask.cancel() }
+                let timeoutComponents = timeout.components
+                let timeoutSeconds = max(
+                    0,
+                    Double(timeoutComponents.seconds) + Double(timeoutComponents.attoseconds) / 1e18)
+                DispatchQueue.global(qos: .utility).asyncAfter(
+                    deadline: .now() + timeoutSeconds,
+                    execute: timeoutWorkItem)
+                defer { timeoutWorkItem.cancel() }
 
                 let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit()
