@@ -101,7 +101,7 @@ if (process.env.VIBETUNNEL_SEA === 'true' && fs.existsSync(nativeExecutable)) {
   if (shouldRebuild) {
     console.log('Building server TypeScript files for tests...');
     try {
-      execSync('pnpm exec tsc -p tsconfig.server.json', {
+      execSync('pnpm exec tsc6 -p tsconfig.server.json', {
         stdio: 'inherit',
         cwd: projectRoot,
       });
@@ -121,7 +121,7 @@ if (process.env.VIBETUNNEL_SEA === 'true' && fs.existsSync(nativeExecutable)) {
   // Fallback: build TypeScript files if needed
   console.log('Building server TypeScript files for tests...');
   try {
-    execSync('pnpm exec tsc -p tsconfig.server.json', { 
+    execSync('pnpm exec tsc6 -p tsconfig.server.json', {
       stdio: 'inherit',
       cwd: projectRoot
     });

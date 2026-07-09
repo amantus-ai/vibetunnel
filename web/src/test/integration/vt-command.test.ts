@@ -17,7 +17,12 @@ describe('vt command', () => {
       const child = spawn('bash', [vtScriptPath, ...args], {
         cwd: projectRoot,
         stdio: 'pipe',
-        env,
+        env: {
+          ...env,
+          // Keep tests independent of installed app bundles and slow DerivedData searches.
+          VIBETUNNEL_BIN: env.VIBETUNNEL_BIN ?? join(projectRoot, 'bin/vibetunnel'),
+          VIBETUNNEL_FWD_BIN: env.VIBETUNNEL_FWD_BIN ?? join(projectRoot, 'bin/vibetunnel-fwd'),
+        },
       });
       let stdout = '';
       let stderr = '';

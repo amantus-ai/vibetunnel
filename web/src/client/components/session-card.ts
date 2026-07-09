@@ -21,6 +21,7 @@ import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
 
 const logger = createLogger('session-card');
+
 import './vibe-terminal-buffer.js';
 import './clickable-path.js';
 import './inline-edit.js';

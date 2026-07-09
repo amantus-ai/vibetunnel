@@ -24,8 +24,10 @@ execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife
 
 // Build server TypeScript
 console.log('Building server...');
-// Force a clean build in CI to avoid incremental build issues
-execSync('npx tsc --build --force', { stdio: 'inherit' });
+// Force clean builds in CI. The CommonJS server stays on TypeScript 6 while
+// browser targets exercise TypeScript 7's native compiler.
+execSync('pnpm exec tsc6 --build tsconfig.server.json --force', { stdio: 'inherit' });
+execSync('pnpm exec tsc --build tsconfig.client.json tsconfig.sw.json --force', { stdio: 'inherit' });
 
 // Verify dist directory exists
 if (fs.existsSync(path.join(__dirname, '../dist'))) {

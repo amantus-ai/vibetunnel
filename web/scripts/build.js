@@ -70,7 +70,7 @@ async function build() {
 
   // Build server TypeScript
   console.log('Building server...');
-  execSync('npx tsc -p tsconfig.server.json', { stdio: 'inherit' });
+  execSync('pnpm exec tsc6 -p tsconfig.server.json', { stdio: 'inherit' });
 
   await buildCli();
 

@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "module": "ES2020",
+    "moduleResolution": "bundler",
     "lib": ["ES2020", "webworker", "webworker.iterable"],
     "outDir": "./public",
     "rootDir": "./src",
