@@ -41,24 +41,24 @@
     "vibetunnel": "node lib/cli.js"
   },
   "dependencies": {
-    "@codemirror/commands": "^6.10.3",
+    "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/lang-python": "^6.2.1",
-    "@codemirror/state": "^6.6.0",
+    "@codemirror/state": "^6.7.1",
     "@codemirror/theme-one-dark": "^6.1.3",
-    "@codemirror/view": "^6.42.1",
-    "bonjour-service": "^1.3.0",
+    "@codemirror/view": "^6.43.6",
+    "bonjour-service": "^1.4.2",
     "chalk": "^5.6.2",
     "compression": "^1.8.1",
     "express": "^5.2.1",
     "ghostty-web": "^0.4.0",
-    "helmet": "^8.1.0",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "lit": "^3.3.2",
+    "lit": "^3.3.3",
     "mime-types": "^3.0.2",
     "monaco-editor": "^0.55.1",
     "multer": "^2.2.0",
@@ -66,7 +66,7 @@
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",
     "ws": "^8.21.0",
-    "node-addon-api": "^8.7.0"
+    "node-addon-api": "^8.9.0"
   },
   "optionalDependencies": {
     "authenticate-pam": "^1.0.5"
