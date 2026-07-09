@@ -6,8 +6,8 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('mdns-service');
 
 export class MDNSService {
-  private bonjour: Bonjour | null = null;
-  private service: Service | null = null;
+  private bonjour: InstanceType<typeof Bonjour> | null = null;
+  private service: InstanceType<typeof Service> | null = null;
   private isAdvertising = false;
   private dnsSdProcess: ChildProcess | null = null;
 
