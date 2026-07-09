@@ -11,14 +11,14 @@
     "install": "node-gyp rebuild"
   },
   "dependencies": {
-    "node-addon-api": "^8.7.0"
+    "node-addon-api": "^8.9.0"
   },
   "devDependencies": {
-    "@types/node": "^25.6.2",
-    "node-gyp": "^12.3.0",
+    "@types/node": "^26.1.1",
+    "node-gyp": "^12.4.0",
     "prebuild": "^13.0.1",
     "rimraf": "^6.1.3",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "gypfile": true,
   "license": "MIT"
