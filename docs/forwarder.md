@@ -34,7 +34,7 @@ The forwarder accepts a command after its options:
 vibetunnel-fwd [--session-id <id>] [--title-mode <mode>] [--verbosity <level>] <command> [args...]
 ```
 
-`--update-title` updates an existing session and exits. Title modes are `none`, `filter`, and `static`. The wrapper also passes `VIBETUNNEL_SESSION_ID`, `VIBETUNNEL_TITLE_MODE`, `VIBETUNNEL_LOG_LEVEL`, and an optional `VIBETUNNEL_CONTROL_DIR`.
+`--update-title` updates an existing session and exits. Title modes are `none`, `filter`, and `static`. `VIBETUNNEL_TITLE_MODE`, `VIBETUNNEL_LOG_LEVEL`, `VIBETUNNEL_DEBUG`, and `VIBETUNNEL_CONTROL_DIR` are accepted as inherited overrides; explicit CLI options take precedence. The `vt` and web wrappers normally pass title mode and verbosity as CLI options. For the child command, the forwarder exports the active `VIBETUNNEL_SESSION_ID` and `TERM=xterm-256color`.
 
 ## Build and Test
 

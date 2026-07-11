@@ -53,7 +53,6 @@ vibetunnel --no-auth --ngrok
 
 # Cleanup
 npm uninstall -g vibetunnel
-rm vibetunnel-*.tgz
 ```
 
 ### 4. Publish to npm
