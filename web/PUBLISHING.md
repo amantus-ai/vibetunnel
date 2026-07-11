@@ -26,7 +26,10 @@ vim package.json package.npm.json
 ```bash
 # Clean and build for all platforms on macOS
 pnpm run clean
+PACKAGE_TARBALL="./vibetunnel-$(node -p "require('./package.json').version").tgz"
+rm -f "$PACKAGE_TARBALL"
 pnpm run build:npm
+test -f "$PACKAGE_TARBALL"
 
 # This creates dist-npm/ and vibetunnel-<version>.tgz with:
 # - Compiled JavaScript (lib/)
@@ -40,8 +43,8 @@ pnpm run build:npm
 
 ```bash
 # build:npm runs npm pack in dist-npm/ and moves the archive here, to web/
-pnpm run test:npm-package ./vibetunnel-*.tgz
-npm install -g ./vibetunnel-*.tgz
+pnpm run test:npm-package "$PACKAGE_TARBALL"
+npm install -g "$PACKAGE_TARBALL"
 
 # Test basic functionality
 vibetunnel --version
@@ -65,8 +68,9 @@ npm login
 # Email: [your-email]
 # OTP: [if 2FA enabled]
 
-# Publish the exact archive tested above
-npm publish ./vibetunnel-<version>.tgz
+# Publish the exact archive tested above. Use one command, matching the version:
+npm publish "$PACKAGE_TARBALL" --tag beta    # prerelease, e.g. 1.0.0-beta.18
+npm publish "$PACKAGE_TARBALL" --tag latest  # stable, e.g. 1.0.0
 ```
 
 ### 5. Verify Publication
