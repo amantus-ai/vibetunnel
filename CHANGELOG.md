@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Stopped downloaded or disk-image copies from offering to move VibeTunnel again when it is already installed in Applications.
 - Made the Dockerfile bundled in npm packages build and run directly from packaged runtime artifacts.
 
 ## [1.0.0-beta.17] - 2026-07-03
