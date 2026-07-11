@@ -38,6 +38,11 @@ import os.log
 /// - NSWorkspace for relaunching from new location
 @MainActor
 final class ApplicationMover {
+    struct ApplicationIdentity: Equatable {
+        let bundleIdentifier: String
+        let buildVersion: String
+    }
+
     // MARK: - Properties
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ApplicationMover")
@@ -64,37 +69,80 @@ final class ApplicationMover {
     /// Determines if we should offer to move the app to Applications
     private func shouldOfferToMove() -> Bool {
         let bundlePath = Bundle.main.bundlePath
+        let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "VibeTunnel"
         self.logger.info("ApplicationMover: Checking bundle path: \(bundlePath)")
 
-        // Check if already in Applications
-        let inApps = self.isInApplicationsFolder(bundlePath)
-        self.logger.info("ApplicationMover: Is in Applications folder: \(inApps)")
-        if inApps {
+        return Self.shouldOfferToMove(
+            bundlePath: bundlePath,
+            appName: appName,
+            currentIdentity: Self.applicationIdentity(for: Bundle.main),
+            homeDirectory: NSHomeDirectory(),
+            installedIdentity: { path in
+                Bundle(path: path).flatMap(Self.applicationIdentity(for:))
+            },
+            isRunningFromDMG: self.isRunningFromDMG(_:))
+    }
+
+    /// Determines whether a temporary copy should offer installation.
+    ///
+    /// An existing installation wins even when the user accidentally launches the original
+    /// downloaded copy again. Otherwise that copy repeatedly offers to replace the app it already installed.
+    static func shouldOfferToMove(
+        bundlePath: String,
+        appName: String,
+        currentIdentity: ApplicationIdentity?,
+        homeDirectory: String,
+        installedIdentity: (String) -> ApplicationIdentity?,
+        isRunningFromDMG: (String) -> Bool) -> Bool
+    {
+        if self.isInApplicationsFolder(bundlePath, homeDirectory: homeDirectory) {
             return false
         }
 
-        // Check if running from DMG or other mounted volume
-        let fromDMG = self.isRunningFromDMG(bundlePath)
-        self.logger.info("ApplicationMover: Is running from DMG: \(fromDMG)")
-        if fromDMG {
-            return true
+        let installedPaths = [
+            "/Applications/\(appName).app",
+            "\(homeDirectory)/Applications/\(appName).app",
+        ]
+        if let currentIdentity,
+           installedPaths.contains(where: {
+               guard let installedIdentity = installedIdentity($0) else { return false }
+               return self.isSameOrNewer(installedIdentity, than: currentIdentity)
+           })
+        {
+            return false
         }
 
-        // Check if running from Downloads or Desktop (common when downloaded)
-        let fromTemp = self.isRunningFromTemporaryLocation(bundlePath)
-        self.logger.info("ApplicationMover: Is running from temporary location: \(fromTemp)")
-        if fromTemp {
-            return true
+        return isRunningFromDMG(bundlePath) ||
+            self.isRunningFromTemporaryLocation(bundlePath, homeDirectory: homeDirectory)
+    }
+
+    private nonisolated static func applicationIdentity(for bundle: Bundle) -> ApplicationIdentity? {
+        guard let bundleIdentifier = bundle.bundleIdentifier,
+              let buildVersion = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        else {
+            return nil
         }
 
-        self.logger.info("ApplicationMover: No move needed for path: \(bundlePath)")
-        return false
+        return ApplicationIdentity(
+            bundleIdentifier: bundleIdentifier,
+            buildVersion: buildVersion)
+    }
+
+    private nonisolated static func isSameOrNewer(
+        _ installedIdentity: ApplicationIdentity,
+        than currentIdentity: ApplicationIdentity) -> Bool
+    {
+        guard installedIdentity.bundleIdentifier == currentIdentity.bundleIdentifier else { return false }
+
+        return installedIdentity.buildVersion.compare(
+            currentIdentity.buildVersion,
+            options: .numeric) != .orderedAscending
     }
 
     /// Checks if the app is already in the Applications folder
-    private func isInApplicationsFolder(_ path: String) -> Bool {
+    private nonisolated static func isInApplicationsFolder(_ path: String, homeDirectory: String) -> Bool {
         let applicationsPath = "/Applications/"
-        let userApplicationsPath = NSHomeDirectory() + "/Applications/"
+        let userApplicationsPath = homeDirectory + "/Applications/"
 
         return path.hasPrefix(applicationsPath) || path.hasPrefix(userApplicationsPath)
     }
@@ -208,8 +256,7 @@ final class ApplicationMover {
     }
 
     /// Checks if app is running from Downloads, Desktop, or other temporary locations
-    private func isRunningFromTemporaryLocation(_ path: String) -> Bool {
-        let homeDirectory = NSHomeDirectory()
+    private nonisolated static func isRunningFromTemporaryLocation(_ path: String, homeDirectory: String) -> Bool {
         let downloadsPath = homeDirectory + "/Downloads/"
         let desktopPath = homeDirectory + "/Desktop/"
         let documentsPath = homeDirectory + "/Documents/"
