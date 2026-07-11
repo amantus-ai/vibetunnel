@@ -78,6 +78,8 @@ Note: Node version numbers map to internal versions (v127=Node 22, v137=Node 24)
 
 ## Build Process
 
+Repository builds require rustup. The native forwarder uses the Rust toolchain pinned by `native/vt-fwd/rust-toolchain.toml`; packaged users receive a prebuilt binary.
+
 ### Clean Build Approach
 The npm build process uses a clean distribution directory approach that follows npm best practices:
 

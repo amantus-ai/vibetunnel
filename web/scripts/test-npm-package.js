@@ -260,7 +260,7 @@ async function main() {
       encoding: 'utf8',
     });
     if (!forwarderHelp.includes('VibeTunnel Forward')) {
-      throw new Error('Platform zig forwarder did not run');
+      throw new Error('Platform Rust forwarder did not run');
     }
 
     const port = await getAvailablePort();

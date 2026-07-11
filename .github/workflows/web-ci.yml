@@ -19,6 +19,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RUST_TOOLCHAIN: 1.97.0
 
 defaults:
   run:
@@ -49,10 +50,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.16.0
+      - name: Setup Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+          host_target="$(rustc +"$RUST_TOOLCHAIN" -vV | sed -n 's/^host: //p')"
+          rustup target add --toolchain "$RUST_TOOLCHAIN" "$host_target"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -96,10 +99,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.16.0
+      - name: Setup Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+          host_target="$(rustc +"$RUST_TOOLCHAIN" -vV | sed -n 's/^host: //p')"
+          rustup target add --toolchain "$RUST_TOOLCHAIN" "$host_target"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -146,19 +151,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.16.0
+      - name: Setup Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update \
+            --component rustfmt --component clippy
+          rustup default "$RUST_TOOLCHAIN"
+          host_target="$(rustc +"$RUST_TOOLCHAIN" -vV | sed -n 's/^host: //p')"
+          rustup target add --toolchain "$RUST_TOOLCHAIN" "$host_target"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build zig forwarder
-        run: node scripts/build-fwd-zig.js
+      - name: Check Rust formatting
+        run: cd ../native/vt-fwd && cargo fmt --all -- --check
 
-      - name: Test zig forwarder
-        run: cd ../native/vt-fwd && zig build test e2e -Doptimize=ReleaseFast -Dversion=ci
+      - name: Lint Rust forwarder
+        run: cd ../native/vt-fwd && cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Test Rust forwarder
+        run: cd ../native/vt-fwd && cargo test --all-targets --all-features --locked
+
+      - name: Build Rust forwarder
+        env:
+          VIBETUNNEL_VERSION: ci
+        run: cd ../native/vt-fwd && cargo build --release --locked
+
+      - name: Run Rust forwarder E2E tests
+        run: python3 ../native/vt-fwd/test/e2e.py ../native/vt-fwd/target/release/vibetunnel-fwd
+
+      - name: Install Rust forwarder
+        run: node scripts/build-fwd-rust.js
 
       - name: Run client tests
         run: pnpm run test:client:coverage
@@ -189,7 +211,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Linux bootstrap (Node + Zig + deps)
+      - name: Linux bootstrap (Node + Rust + deps)
         run: scripts/linux-bootstrap.sh
 
       - name: Install dependencies (npm)

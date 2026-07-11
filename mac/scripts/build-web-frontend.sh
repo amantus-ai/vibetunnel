@@ -65,11 +65,11 @@ if vibetunnel_is_truthy "$RUNNING_IN_CI" &&
     fi
 
     if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
-        echo "Copying zig forwarder to app bundle..."
+        echo "Copying Rust forwarder to app bundle..."
         cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
         chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
     else
-        echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
+        echo "error: Rust forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
         exit 1
     fi
     
@@ -365,11 +365,11 @@ else
 fi
 
 if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
-    echo "Copying zig forwarder..."
+    echo "Copying Rust forwarder..."
     cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
     chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
 else
-    echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
+    echo "error: Rust forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
     exit 1
 fi
 
@@ -448,7 +448,7 @@ if [ ! -f "${APP_RESOURCES}/spawn-helper" ]; then
     MISSING_FILES+=("spawn-helper")
 fi
 
-# Check for zig forwarder
+# Check for Rust forwarder
 if [ ! -f "${APP_RESOURCES}/vibetunnel-fwd" ]; then
     MISSING_FILES+=("vibetunnel-fwd")
 fi

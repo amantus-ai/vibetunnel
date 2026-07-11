@@ -13,6 +13,9 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  RUST_TOOLCHAIN: 1.97.0
+
 jobs:
   build-mac:
     name: Build macOS App
@@ -45,29 +48,12 @@ jobs:
         version: 10.15.0
         run_install: false
 
-    - name: Install Zig 0.16.0
-      shell: bash
+    - name: Setup Rust
       run: |
-        arch="$(uname -m)"
-        case "$arch" in
-          arm64)
-            zig_arch="aarch64"
-            zig_sha256="b23d70deaa879b5c2d486ed3316f7eaa53e84acf6fc9cc747de152450d401489"
-            ;;
-          x86_64)
-            zig_arch="x86_64"
-            zig_sha256="0387557ed1877bc6a2e1802c8391953baddba76081876301c522f52977b52ba7"
-            ;;
-          *)
-            echo "Unsupported runner architecture: $arch" >&2
-            exit 1
-            ;;
-        esac
-        archive="zig-${zig_arch}-macos-0.16.0.tar.xz"
-        curl -fsSLO "https://ziglang.org/download/0.16.0/${archive}"
-        echo "${zig_sha256}  ${archive}" | shasum -a 256 -c -
-        tar -xJf "$archive"
-        echo "$PWD/zig-${zig_arch}-macos-0.16.0" >> "$GITHUB_PATH"
+        rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+        rustup default "$RUST_TOOLCHAIN"
+        rustup target add --toolchain "$RUST_TOOLCHAIN" \
+          aarch64-apple-darwin x86_64-apple-darwin
     
     - name: Get pnpm store directory
       shell: bash

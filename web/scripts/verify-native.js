@@ -61,25 +61,25 @@ if (!modulesOk) {
   process.exit(1);
 }
 
-// Verify zig forwarder exists
-console.log('\nChecking zig forwarder...');
+// Verify Rust forwarder exists
+console.log('\nChecking Rust forwarder...');
 if (!fs.existsSync(forwarderExe)) {
-  console.error('ERROR: Zig forwarder not found!');
+  console.error('ERROR: Rust forwarder not found!');
   console.log(`Expected at: ${forwarderExe}`);
   process.exit(1);
 }
 
 try {
   fs.accessSync(forwarderExe, fs.constants.X_OK);
-  console.log('✓ Zig forwarder is executable');
+  console.log('✓ Rust forwarder is executable');
 } catch (error) {
-  console.error('ERROR: Zig forwarder is not executable!');
+  console.error('ERROR: Rust forwarder is not executable!');
   console.log('Attempting to make it executable...');
   fs.chmodSync(forwarderExe, 0o755);
 }
 
 const forwarderStats = fs.statSync(forwarderExe);
-console.log(`Zig forwarder size: ${(forwarderStats.size / 1024 / 1024).toFixed(2)} MB`);
+console.log(`Rust forwarder size: ${(forwarderStats.size / 1024 / 1024).toFixed(2)} MB`);
 
 // Skip version test on Linux due to Node.js SEA segfault issues
 // This affects both x64 and ARM64 architectures on Linux

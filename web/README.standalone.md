@@ -36,10 +36,10 @@ vibetunnel --no-auth
 ### Docker
 
 ```bash
-# Released npm package: Dockerfile.standalone is already commit-pinned
+# Released npm package: build directly from the extracted package contents
 docker build -f Dockerfile.standalone -t vibetunnel .
 
-# Repository checkout: pin the matching forwarder source
+# Repository checkout: the source Dockerfile builds the matching forwarder
 docker build -f Dockerfile.standalone -t vibetunnel \
   --build-arg VT_FWD_COMMIT="$(git rev-parse HEAD)" .
 

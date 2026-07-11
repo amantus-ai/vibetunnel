@@ -43,6 +43,7 @@ pnpm run build
 - Node.js >= 22.12.0
 - macOS or Linux (Windows not yet supported)
 - Build tools for native modules (Xcode on macOS, build-essential on Linux)
+- Rustup for source builds; `native/vt-fwd/rust-toolchain.toml` pins the forwarder toolchain
 
 ## Usage
 

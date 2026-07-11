@@ -92,6 +92,7 @@
     "test:e2e:parallel:workers": "PLAYWRIGHT_PARALLEL=true PLAYWRIGHT_WORKERS=4 playwright test",
     "test:e2e:perf": "playwright test --config=playwright.config.performance.ts",
     "test:npm-package": "node scripts/test-npm-package.js",
+    "test:npm-docker-package": "node scripts/test-npm-docker-package.js",
     "prepare": "husky"
   },
   "pnpm": {

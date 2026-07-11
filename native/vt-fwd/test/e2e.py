@@ -3,6 +3,8 @@
 import json
 import os
 from pathlib import Path
+import signal
+import shutil
 import socket
 import stat
 import struct
@@ -46,7 +48,13 @@ def main():
         env["VIBETUNNEL_LOG_LEVEL"] = "debug"
 
         test_exit_and_artifacts(binary, control_dir, env)
+        test_non_utf8_option_values(binary, control_dir, env)
+        test_non_utf8_home(binary, control_dir, env)
+        test_rust_min_stack_is_child_only(binary, env)
+        test_child_sigpipe(binary, control_dir, env)
         test_binary_output(binary, control_dir, env)
+        test_shutdown_interrupts_backpressured_ipc(binary, control_dir, env)
+        test_signal_during_shutdown_cleanup(binary, control_dir, env)
         test_ipc(binary, control_dir, env)
 
         log_path = home / ".vibetunnel/log.txt"
@@ -98,6 +106,256 @@ def test_binary_output(binary, control_dir, env):
         row[2] for row in rows if isinstance(row, list) and len(row) == 3 and row[1] == "o"
     )
     assert "DONE" in output_text and "\ufffd" in output_text
+
+
+def test_non_utf8_option_values(binary, control_dir, env):
+    session_id = b"raw_options"
+    raw_log_path = os.fsencode(control_dir.parent / "log-") + b"\xff"
+    raw_binary = os.fsencode(binary)
+    true_binary = shutil.which("true")
+    assert true_binary is not None
+    proc = subprocess.run(
+        [
+            raw_binary,
+            b"--session-id",
+            session_id,
+            b"--log-file",
+            raw_log_path,
+            os.fsencode(true_binary),
+        ],
+        env=env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stderr)
+    replacement_log_path = raw_log_path[:-1] + "\ufffd".encode()
+    assert not os.path.exists(replacement_log_path)
+    if sys.platform == "darwin":
+        # APFS rejects malformed UTF-8 path components with EILSEQ. The
+        # important parity check here is that no replacement path is created.
+        assert not os.path.exists(raw_log_path)
+    else:
+        assert os.path.exists(raw_log_path)
+
+    updater = subprocess.run(
+        [
+            raw_binary,
+            b"--session-id",
+            session_id,
+            b"--update-title",
+            b"raw\xfftitle",
+        ],
+        env=env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert updater.returncode == 0, (updater.returncode, updater.stderr)
+    info = json.loads((control_dir / os.fsdecode(session_id) / "session.json").read_text())
+    assert info["name"] == "rawtitle"
+
+
+def test_non_utf8_home(binary, control_dir, env):
+    session_id = "raw_home"
+    raw_home = b"/tmp/home-\xff"
+    raw_env = {os.fsencode(key): os.fsencode(value) for key, value in env.items()}
+    raw_env[b"HOME"] = raw_home
+    expected = raw_home.hex().encode()
+    code = (
+        b"import os,sys;sys.exit(0 if os.environb[b'HOME'].hex().encode()=="
+        + repr(expected).encode()
+        + b" else 9)"
+    )
+    proc = subprocess.run(
+        [
+            os.fsencode(binary),
+            b"--session-id",
+            os.fsencode(session_id),
+            b"--log-file",
+            os.fsencode(control_dir.parent / "raw-home.log"),
+            os.fsencode(sys.executable),
+            b"-c",
+            code,
+        ],
+        env=raw_env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stderr)
+    info = json.loads((control_dir / session_id / "session.json").read_text())
+    assert info["status"] == "exited" and info["exitCode"] == 0
+
+
+def test_child_sigpipe(binary, control_dir, env):
+    session_id = "child_sigpipe"
+    proc = subprocess.Popen(
+        [binary, "--session-id", session_id, "/bin/sleep", "30"],
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    session_path = control_dir / session_id / "session.json"
+    child_pid = None
+
+    def session_is_running():
+        nonlocal child_pid
+        try:
+            info = json.loads(session_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return False
+        child_pid = info.get("pid")
+        return info.get("status") == "running" and isinstance(child_pid, int)
+
+    wait_for(session_is_running, "SIGPIPE child pid")
+    os.kill(child_pid, signal.SIGPIPE)
+    _, stderr = proc.communicate(timeout=10)
+    assert proc.returncode == 141, (proc.returncode, stderr)
+    info = json.loads(session_path.read_text())
+    assert info["status"] == "exited" and info["exitCode"] == 141
+
+
+def test_rust_min_stack_is_child_only(binary, env):
+    child_env = env.copy()
+    child_env["RUST_MIN_STACK"] = "9000000000000000000"
+    true_binary = shutil.which("true")
+    assert true_binary is not None
+    proc = subprocess.run(
+        [binary, "--session-id", "rust_min_stack", true_binary],
+        env=child_env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stderr)
+
+
+def test_shutdown_interrupts_backpressured_ipc(binary, control_dir, env):
+    session_id = "backpressured_shutdown"
+    session_dir = control_dir / session_id
+    proc = subprocess.Popen(
+        [
+            binary,
+            "--session-id",
+            session_id,
+            sys.executable,
+            "-c",
+            (
+                "import os,signal,time,tty;"
+                "signal.signal(signal.SIGTERM,signal.SIG_IGN);"
+                "signal.signal(signal.SIGINT,signal.SIG_DFL);"
+                "tty.setraw(0);os.write(1,b'ready\\n');time.sleep(30)"
+            ),
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    socket_path = session_dir / "ipc.sock"
+    session_path = session_dir / "session.json"
+    child_pid = None
+
+    def session_is_running():
+        nonlocal child_pid
+        try:
+            info = json.loads(session_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return False
+        child_pid = info.get("pid")
+        return info.get("status") == "running" and isinstance(child_pid, int)
+
+    wait_for(socket_path.exists, "backpressure IPC socket")
+    wait_for(session_is_running, "backpressure child pid")
+    cast_path = session_dir / "stdout"
+    wait_for(
+        lambda: cast_path.exists() and "ready" in cast_path.read_text(encoding="utf-8"),
+        "raw PTY child",
+    )
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        client.connect(str(socket_path))
+        client.sendall(frame(1, b"x" * MAX_PAYLOAD) + frame(4))
+        client.settimeout(0.2)
+        try:
+            response = client.recv(5)
+        except socket.timeout:
+            response = None
+        assert response is None, "PTY input did not backpressure the control worker"
+
+        proc.send_signal(signal.SIGTERM)
+        time.sleep(0.2)
+        assert proc.poll() is None, "child unexpectedly accepted SIGTERM"
+        proc.send_signal(signal.SIGINT)
+        _, stderr = proc.communicate(timeout=5)
+    finally:
+        client.close()
+        if proc.poll() is None:
+            try:
+                os.killpg(child_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.kill()
+            proc.communicate(timeout=5)
+    assert proc.returncode == 130, (proc.returncode, stderr)
+
+    def child_is_gone():
+        try:
+            os.kill(child_pid, 0)
+        except ProcessLookupError:
+            return True
+        return False
+
+    wait_for(child_is_gone, "backpressured child exit", timeout=3)
+    info = json.loads(session_path.read_text())
+    assert info["status"] == "exited" and info["exitCode"] == 130
+    assert not socket_path.exists()
+
+
+def test_signal_during_shutdown_cleanup(binary, control_dir, env):
+    session_id = "cleanup_signal"
+    session_dir = control_dir / session_id
+    child_code = (
+        "import os,time;time.sleep(.2);"
+        "[os.close(fd) for fd in (0,1,2)];time.sleep(30)"
+    )
+    proc = subprocess.Popen(
+        [binary, "--session-id", session_id, sys.executable, "-c", child_code],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    socket_path = session_dir / "ipc.sock"
+    session_path = session_dir / "session.json"
+    child_pid = None
+
+    def session_is_running():
+        nonlocal child_pid
+        try:
+            info = json.loads(session_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return False
+        child_pid = info.get("pid")
+        return info.get("status") == "running" and isinstance(child_pid, int)
+
+    try:
+        wait_for(socket_path.exists, "cleanup-signal IPC socket")
+        wait_for(session_is_running, "cleanup-signal child pid")
+        wait_for(lambda: not socket_path.exists(), "shutdown cleanup start")
+        time.sleep(1)
+        assert proc.poll() is None, "child exited before the late-signal probe"
+        proc.send_signal(signal.SIGTERM)
+        _, stderr = proc.communicate(timeout=5)
+    finally:
+        if proc.poll() is None:
+            try:
+                os.killpg(child_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.kill()
+            proc.communicate(timeout=5)
+    assert proc.returncode == 143, (proc.returncode, stderr)
+    info = json.loads(session_path.read_text())
+    assert info["status"] == "exited" and info["exitCode"] == 143
 
 
 def test_ipc(binary, control_dir, env):

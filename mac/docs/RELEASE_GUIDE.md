@@ -36,6 +36,9 @@ Before starting any release:
 - [ ] Update `CHANGELOG.md` with release notes
 
 ### 2. Environment Setup
+
+- Install rustup; `native/vt-fwd/rust-toolchain.toml` pins the native forwarder toolchain used by release builds.
+
 ```bash
 # Required environment variables
 export SPARKLE_ACCOUNT="VibeTunnel"

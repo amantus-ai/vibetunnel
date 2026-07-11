@@ -51,8 +51,7 @@ docs/
 .pnpm-store/
 **/.pnpm-store/
 **/.node-builds/
-**/.zig-cache/
-**/zig-out*/
+**/target/
 **/__pycache__/
 *.tgz
 

@@ -246,7 +246,7 @@ The server is built as a standalone Bun executable that embeds:
 **Key Components**:
 - `server.ts` - HTTP server initialization and lifecycle
 - `app.ts` - Express application setup and middleware
-- `native/vt-fwd` - External terminal forwarder (Zig, built as `vibetunnel-fwd`)
+- `native/vt-fwd` - External terminal forwarder (Rust, built as `vibetunnel-fwd`)
 - `pty/pty-manager.ts` - Native PTY process management
 - `pty/session-manager.ts` - Terminal session lifecycle
 - `services/terminal-manager.ts` - High-level terminal operations
@@ -697,6 +697,7 @@ cleanupOnStartup: Bool = true
 - macOS 14.0+ SDK
 - Node.js 22.12 through 24.x
 - Bun runtime
+- Rustup; the forwarder toolchain is pinned by `native/vt-fwd/rust-toolchain.toml`
 
 **Build Process**:
 ```bash

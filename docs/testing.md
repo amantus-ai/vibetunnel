@@ -9,38 +9,51 @@ Short, reliable gate + forwarder E2E.
 ```bash
 ./scripts/validate-docs.sh
 
-cd native/vt-fwd && zig build
+(
+  cd native/vt-fwd
+  cargo fmt --all -- --check
+  cargo clippy --all-targets --all-features --locked -- -D warnings
+  cargo test --all-targets --all-features --locked
+  cargo build --release --locked
+  python3 test/e2e.py target/release/vibetunnel-fwd
+)
 
-cd web && pnpm run build
-cd web && pnpm run check
-cd web && pnpm run test
+(
+  cd web
+  pnpm run build
+  pnpm run check
+  pnpm run test:ci
+)
 ```
 
 Notes:
 - `web/scripts/check-all.sh` runs format:check, lint, lint:typeaware, typecheck, test:vt in parallel.
-- `pnpm run test` runs Vitest suites.
+- `pnpm run test:ci` runs the Vitest suites once with the verbose reporter.
 
-## Zig Formatting + Linting
+## Rust Formatting + Linting
 
-Zig has a formatter (`zig fmt`) and no official linter. Use formatting + compiler warnings.
+Rustup installs the pinned formatter and linter components from `native/vt-fwd/rust-toolchain.toml`.
 
 ```bash
-zig fmt native/vt-fwd/build.zig native/vt-fwd/src/*.zig
-cd native/vt-fwd && zig build
+cd native/vt-fwd
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo test --all-targets --all-features --locked
 ```
 
-## Zig Forwarder E2E (random binary → disk artifacts)
+## Rust Forwarder E2E (random binary → disk artifacts)
 
 Goal: verify `session.json`, `stdout`, `stdin` FIFO, `ipc.sock` exist; stdout has bytes; session exits cleanly.
 
 ```bash
 cd native/vt-fwd
-zig build e2e -Doptimize=ReleaseFast
+cargo build --release --locked
+python3 test/e2e.py target/release/vibetunnel-fwd
 ```
 
-The automated test covers exit propagation, private artifact permissions, random binary output, valid cast JSON, fragmented and oversized IPC frames, heartbeat, resize, stdin, title updates, malformed signals, and process-group termination.
+The Unix-only Python 3 test covers exit propagation, private artifact permissions, random binary output, valid cast JSON, fragmented and oversized IPC frames, heartbeat, resize, stdin, title updates, malformed signals, and process-group termination.
 
-Manual artifact inspection:
+Manual artifact inspection requires a C compiler:
 
 ```bash
 cat > /tmp/vt-randout.c <<'EOF'
@@ -52,10 +65,10 @@ write(1,"\nDONE\n",6); sleep(1); return 0;}
 EOF
 cc /tmp/vt-randout.c -o /tmp/vt-randout
 
-SESSION_ID="zigtest_$(date +%s)"
+SESSION_ID="rusttest_$(date +%s)"
 CONTROL_DIR="$HOME/.vibetunnel/control/$SESSION_ID"
 
-native/vt-fwd/zig-out/bin/vibetunnel-fwd --session-id "$SESSION_ID" /tmp/vt-randout > /dev/null &
+native/vt-fwd/target/release/vibetunnel-fwd --session-id "$SESSION_ID" /tmp/vt-randout > /dev/null &
 FWD_PID=$!
 
 # wait for artifacts
@@ -111,5 +124,5 @@ cd ios
 ## Cleanup
 
 ```bash
-rm -rf "$HOME/.vibetunnel/control/zigtest_*"
+rm -rf "$HOME/.vibetunnel/control/rusttest_*"
 ```

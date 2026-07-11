@@ -5,6 +5,7 @@
 ### Getting Started
 - [Quickstart](guides/quickstart.md) - Installation, first terminal
 - [Architecture Overview](core/architecture.md) - System design
+- [Native Forwarder](forwarder.md) - PTY, session artifact, and IPC contracts
 - [API Reference](core/api-reference.md) - Endpoints, WebSocket protocol
 
 ### Development

@@ -24,17 +24,33 @@ const ALL_PLATFORMS = {
 };
 const FORWARDER_TARGETS = {
   darwin: {
-    x64: { nativeArch: 'x64' },
-    arm64: { nativeArch: 'arm64' }
+    x64: 'x86_64-apple-darwin',
+    arm64: 'aarch64-apple-darwin'
   },
   linux: {
-    x64: { target: 'x86_64-linux-gnu' },
-    arm64: { target: 'aarch64-linux-gnu' }
+    x64: 'x86_64-unknown-linux-gnu',
+    arm64: 'aarch64-unknown-linux-gnu'
   }
 };
 
 const DIST_DIR = path.join(__dirname, '..', 'dist-npm');
 const ROOT_DIR = path.join(__dirname, '..');
+const FORWARDER_TOOLCHAIN_FILE = path.join(
+  ROOT_DIR,
+  '..',
+  'native',
+  'vt-fwd',
+  'rust-toolchain.toml'
+);
+const FORWARDER_RUST_TOOLCHAIN = fs
+  .readFileSync(FORWARDER_TOOLCHAIN_FILE, 'utf8')
+  .match(/^channel\s*=\s*"([^"]+)"/m)?.[1];
+if (!FORWARDER_RUST_TOOLCHAIN) {
+  throw new Error(`Missing pinned Rust channel in ${FORWARDER_TOOLCHAIN_FILE}`);
+}
+const RUSTUP_INIT_VERSION = '1.29.0';
+const RUSTUP_INIT_AMD64_SHA256 =
+  '4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10';
 
 // Map Node.js versions to ABI versions
 // ABI versions from: https://nodejs.org/api/n-api.html#node-api-version-matrix
@@ -97,12 +113,23 @@ if (currentOnly) {
   }
 }
 
+if (noDocker && !currentOnly && PLATFORMS.linux) {
+  console.log('⚠️  --no-docker selected; Linux artifacts will be omitted.');
+  PLATFORMS = Object.fromEntries(
+    Object.entries(PLATFORMS).filter(([platform]) => platform !== 'linux')
+  );
+}
+if (Object.keys(PLATFORMS).length === 0) {
+  console.error('❌ No build targets remain. Use --current-only for a native Linux build.');
+  process.exit(1);
+}
+
 console.log('🚀 Building VibeTunnel for npm distribution (clean approach)...\n');
 
 if (currentOnly) {
   console.log(`📦 Legacy mode: Building for ${process.platform}/${process.arch} only\n`);
 } else {
-  console.log('🌐 Multi-platform mode: Building for all supported platforms\n');
+  console.log('🌐 Multi-platform mode: Building selected platforms\n');
   console.log('Target platforms:', Object.entries(PLATFORMS)
     .map(([platform, archs]) => `${platform}(${archs.join(',')})`)
     .join(', '));
@@ -133,30 +160,29 @@ function checkDocker() {
   }
 }
 
-function buildForwarders() {
-  console.log('↪️  Building platform-specific zig forwarders...\n');
-
+function cleanForwarders() {
   const forwardersDir = path.join(ROOT_DIR, 'forwarders');
   if (fs.existsSync(forwardersDir)) {
     fs.rmSync(forwardersDir, { recursive: true, force: true });
   }
+}
 
-  for (const [platform, archs] of Object.entries(PLATFORMS)) {
+function buildForwarders(platforms) {
+  console.log('↪️  Building platform-specific Rust forwarders...\n');
+
+  for (const [platform, archs] of Object.entries(platforms)) {
     for (const arch of archs) {
       const buildTarget = FORWARDER_TARGETS[platform]?.[arch];
       if (!buildTarget) {
-        console.error(`❌ No zig target configured for ${platform}/${arch}`);
+        console.error(`❌ No Rust target configured for ${platform}/${arch}`);
         process.exit(1);
       }
 
       const output = path.join('forwarders', `${platform}-${arch}`, 'vibetunnel-fwd');
       console.log(`  → ${platform}/${arch}`);
-      const targetArgs = buildTarget.nativeArch
-        ? ['--native-arch', buildTarget.nativeArch]
-        : ['--target', buildTarget.target];
       execFileSync(
         process.execPath,
-        ['scripts/build-fwd-zig.js', ...targetArgs, '--output', output],
+        ['scripts/build-fwd-rust.js', '--target', buildTarget, '--output', output],
         {
           cwd: ROOT_DIR,
           stdio: 'inherit'
@@ -165,7 +191,7 @@ function buildForwarders() {
     }
   }
 
-  console.log('✅ Platform-specific zig forwarders completed\n');
+  console.log('✅ Platform-specific Rust forwarders completed\n');
 }
 
 // Build for macOS locally
@@ -305,9 +331,116 @@ function buildMacOS() {
   console.log('✅ macOS builds completed\n');
 }
 
-// Build for Linux using Docker
+// Build GNU forwarders on glibc 2.28 so the npm package retains its Linux floor.
+function buildLinuxForwarders() {
+  const forwarderVersion =
+    process.env.VIBETUNNEL_VERSION ||
+    JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8')).version ||
+    'unknown';
+  const image =
+    'debian:buster-slim@sha256:bb3dc79fddbca7e8903248ab916bb775c96ec61014b3d02b4f06043b604726dc';
+  const linuxArchitectures = PLATFORMS.linux || [];
+  const crossPackages = linuxArchitectures.includes('arm64')
+    ? 'gcc-aarch64-linux-gnu libc6-dev-arm64-cross'
+    : '';
+
+  console.log('↪️  Building Linux Rust forwarders on glibc 2.28...\n');
+
+  for (const arch of linuxArchitectures) {
+    const outputDir = path.join(ROOT_DIR, 'forwarders', `linux-${arch}`);
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const dockerScript = `
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Debian 10 is archived. Keep signature verification, but disable the
+    # expired repository timestamp check for this pinned build image.
+    sed -i \\
+      -e 's|deb.debian.org/debian|archive.debian.org/debian|g' \\
+      -e 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' \\
+      -e '/buster-updates/d' \\
+      /etc/apt/sources.list
+    apt-get -o Acquire::Check-Valid-Until=false update -qq
+    apt-get install -y -qq --no-install-recommends \\
+      ca-certificates curl gcc libc6-dev ${crossPackages}
+
+    curl --proto "=https" --tlsv1.2 -fsSL \\
+      "https://static.rust-lang.org/rustup/archive/${RUSTUP_INIT_VERSION}/x86_64-unknown-linux-gnu/rustup-init" \\
+      -o /tmp/rustup-init
+    echo "${RUSTUP_INIT_AMD64_SHA256}  /tmp/rustup-init" | sha256sum -c -
+    chmod +x /tmp/rustup-init
+    /tmp/rustup-init -y --no-modify-path --profile minimal \\
+      --default-toolchain ${FORWARDER_RUST_TOOLCHAIN}
+    rm /tmp/rustup-init
+    . "$HOME/.cargo/env"
+    rustc --version | grep -F "rustc ${FORWARDER_RUST_TOOLCHAIN} "
+
+    export CARGO_TARGET_DIR=/tmp/vibetunnel-cargo-target
+    cd /workspace/native/vt-fwd
+    for arch in ${linuxArchitectures.join(' ')}; do
+      case "$arch" in
+        x64)
+          target=x86_64-unknown-linux-gnu
+          unset CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
+          ;;
+        arm64)
+          target=aarch64-unknown-linux-gnu
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          ;;
+        *)
+          echo "Unsupported Linux forwarder architecture: $arch" >&2
+          exit 1
+          ;;
+      esac
+
+      rustup target add --toolchain ${FORWARDER_RUST_TOOLCHAIN} "$target"
+      cargo build --release --locked --target "$target"
+
+      binary="$CARGO_TARGET_DIR/$target/release/vibetunnel-fwd"
+      max_glibc=$(readelf --version-info "$binary" | grep -oE 'GLIBC_[0-9.]+' | sort -Vu | tail -1)
+      echo "linux-$arch maximum required symbol: $max_glibc"
+      test "$(printf '%s\\n' "$max_glibc" GLIBC_2.28 | sort -V | tail -1)" = GLIBC_2.28
+      install -m 0755 "$binary" "/workspace/forwarders/linux-$arch/vibetunnel-fwd"
+    done
+  `;
+
+  try {
+    execFileSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--platform',
+        'linux/amd64',
+        '-e',
+        `VIBETUNNEL_VERSION=${forwarderVersion}`,
+        '-v',
+        `${ROOT_DIR}:/workspace`,
+        '-v',
+        `${path.join(ROOT_DIR, '..', 'native', 'vt-fwd')}:/workspace/native/vt-fwd:ro`,
+        '-w',
+        '/workspace/native/vt-fwd',
+        image,
+        'bash',
+        '-c',
+        dockerScript
+      ],
+      { stdio: 'inherit' }
+    );
+  } catch (error) {
+    console.error('❌ Linux forwarder build failed:', error.message);
+    process.exit(1);
+  }
+
+  console.log('✅ Linux Rust forwarders completed\n');
+}
+
+// Build Linux native modules using Docker
 function buildLinux() {
-  console.log('🐧 Building Linux binaries using Docker...\n');
+  buildLinuxForwarders();
+  console.log('🐧 Building Linux native modules using Docker...\n');
   
   const dockerScript = `
     set -e
@@ -316,20 +449,20 @@ function buildLinux() {
     
     # Install dependencies including cross-compilation tools
     apt-get update -qq
-    apt-get install -y -qq python3 make g++ git libpam0g-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+    apt-get install -y -qq ca-certificates curl python3 make g++ git libpam0g-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
     
     # Add ARM64 architecture for cross-compilation
     dpkg --add-architecture arm64
     apt-get update -qq
     apt-get install -y -qq libpam0g-dev:arm64
-    
+
     # Install pnpm
     npm install -g pnpm --force --no-frozen-lockfile
     
     # Install dependencies
     cd /workspace
     pnpm install --force --no-frozen-lockfile
-    
+
     # Build node-pty for Linux
     cd /workspace/node-pty
     for node_version in ${NODE_VERSIONS.join(' ')}; do
@@ -372,10 +505,26 @@ function buildLinux() {
   `;
   
   try {
-    execSync(`docker run --rm --platform linux/amd64 -v "\${PWD}:/workspace" -w /workspace node:22-bookworm bash -c '${dockerScript}'`, {
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..')
-    });
+    execFileSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--platform',
+        'linux/amd64',
+        '-v',
+        `${ROOT_DIR}:/workspace`,
+        '-v',
+        `${path.join(ROOT_DIR, '..', 'native', 'vt-fwd')}:/workspace/native/vt-fwd`,
+        '-w',
+        '/workspace',
+        'node:22-bullseye@sha256:b65845e07a46fcae018a6c6eedbe247d00103a5ebee99dd71e73436bcc882660',
+        'bash',
+        '-c',
+        dockerScript
+      ],
+      { stdio: 'inherit' }
+    );
     console.log('✅ Linux builds completed\n');
   } catch (error) {
     console.error('❌ Linux build failed:', error.message);
@@ -557,9 +706,11 @@ function validatePackageHybrid() {
     'bin/vibetunnel',
     'bin/vt',
     'scripts/postinstall.js',
+    'scripts/docker-entrypoint.sh',
     'public/index.html',
     'node-pty/package.json',
     'node-pty/binding.gyp',
+    'Dockerfile.standalone',
     'package.json'
   ];
   
@@ -570,11 +721,26 @@ function validatePackageHybrid() {
     }
   }
 
+  const dockerfilePath = path.join(DIST_DIR, 'Dockerfile.standalone');
+  if (fs.existsSync(dockerfilePath)) {
+    const dockerfile = fs.readFileSync(dockerfilePath, 'utf8');
+    if (!dockerfile.includes('COPY . .')) {
+      errors.push('npm Dockerfile does not copy the allowlisted package context');
+    }
+
+    const sourceBuildMarkers = ['pnpm-lock.yaml', 'native/vt-fwd', 'cargo build', 'VT_FWD_COMMIT'];
+    for (const marker of sourceBuildMarkers) {
+      if (dockerfile.includes(marker)) {
+        errors.push(`npm Dockerfile unexpectedly depends on source build input: ${marker}`);
+      }
+    }
+  }
+
   for (const [platform, archs] of Object.entries(PLATFORMS)) {
     for (const arch of archs) {
       const forwarder = `forwarders/${platform}-${arch}/vibetunnel-fwd`;
       if (!fs.existsSync(path.join(DIST_DIR, forwarder))) {
-        errors.push(`Missing zig forwarder: ${forwarder}`);
+        errors.push(`Missing Rust forwarder: ${forwarder}`);
       }
     }
   }
@@ -626,6 +792,15 @@ function validatePackageHybrid() {
     } else {
       errors.push('Missing node-addon-api dependency (node-pty source fallback will fail)');
     }
+
+    for (const packagedDockerPath of [
+      'Dockerfile.standalone',
+      'scripts/docker-entrypoint.sh'
+    ]) {
+      if (!packageJson.files?.includes(packagedDockerPath)) {
+        errors.push(`package.json files list omits Docker runtime input: ${packagedDockerPath}`);
+      }
+    }
   }
   
   // Report results
@@ -665,7 +840,13 @@ async function main() {
     process.exit(1);
   }
 
-  buildForwarders();
+  cleanForwarders();
+
+  if (currentOnly) {
+    buildForwarders(PLATFORMS);
+  } else if (PLATFORMS.darwin) {
+    buildForwarders({ darwin: PLATFORMS.darwin });
+  }
   
   // Step 2: Multi-platform native module builds (unless current-only)
   if (!currentOnly) {
@@ -718,7 +899,8 @@ async function main() {
     // Scripts
     { src: 'scripts/postinstall-npm.js', dest: 'scripts/postinstall.js' },
     { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' },
-    { src: 'scripts/install-vt-command.js', dest: 'scripts/install-vt-command.js' }
+    { src: 'scripts/install-vt-command.js', dest: 'scripts/install-vt-command.js' },
+    { src: 'scripts/docker-entrypoint-npm.sh', dest: 'scripts/docker-entrypoint.sh' }
   ];
   
   function copyRecursive(src, dest) {
@@ -930,29 +1112,11 @@ require('../lib/vibetunnel-cli');
     console.log('  ✓ Copied README.standalone.md');
   }
   
-  // Copy Dockerfile.standalone
-  const dockerfilePath = path.join(ROOT_DIR, 'Dockerfile.standalone');
+  // The published package is already compiled, so stage its runtime-only image.
+  const dockerfilePath = path.join(ROOT_DIR, 'Dockerfile.npm');
   if (fs.existsSync(dockerfilePath)) {
-    const repositoryRoot = path.join(ROOT_DIR, '..');
-    const forwarderCommit = (
-      process.env.GITHUB_SHA ||
-      execSync('git rev-parse HEAD', { cwd: repositoryRoot, encoding: 'utf8' }).trim()
-    );
-    if (!/^[0-9a-f]{40}$/.test(forwarderCommit)) {
-      throw new Error(`Invalid VibeTunnel commit for Dockerfile: ${forwarderCommit}`);
-    }
-
-    const dockerfile = fs.readFileSync(dockerfilePath, 'utf8');
-    const commitArg = 'ARG VT_FWD_COMMIT\n';
-    if (!dockerfile.includes(commitArg)) {
-      throw new Error('Dockerfile.standalone is missing the VT_FWD_COMMIT build argument');
-    }
-
-    fs.writeFileSync(
-      path.join(DIST_DIR, 'Dockerfile.standalone'),
-      dockerfile.replace(commitArg, `ARG VT_FWD_COMMIT=${forwarderCommit}\n`)
-    );
-    console.log(`  ✓ Copied Dockerfile.standalone (vt-fwd ${forwarderCommit.slice(0, 12)})`);
+    fs.copyFileSync(dockerfilePath, path.join(DIST_DIR, 'Dockerfile.standalone'));
+    console.log('  ✓ Copied runtime-only Dockerfile.standalone');
   }
   
   // Step 8: Clean up test files in dist-npm

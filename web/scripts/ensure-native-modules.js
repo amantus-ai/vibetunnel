@@ -65,30 +65,22 @@ if (fs.existsSync(symlinkNodePty) && fs.lstatSync(symlinkNodePty).isSymbolicLink
 
 console.log('Native modules are ready for tests');
 
-// Ensure zig forwarder exists (required now that Node forwarder is removed)
+// Ensure Rust forwarder exists (required now that Node forwarder is removed)
 const webRoot = path.join(__dirname, '..');
 const nativeForwarderPath = path.join(webRoot, 'native', 'vibetunnel-fwd');
 const binForwarderPath = path.join(webRoot, 'bin', 'vibetunnel-fwd');
 
 if (!fs.existsSync(nativeForwarderPath) || !fs.existsSync(binForwarderPath)) {
-  console.log('zig forwarder not found, building...');
+  console.log('Rust forwarder not found, building...');
 
   try {
-    execSync('zig version', { stdio: 'ignore' });
-  } catch (_e) {
-    console.error('zig is required to build vibetunnel-fwd but was not found in PATH');
-    console.error('Install zig, then run: node scripts/build-fwd-zig.js');
-    process.exit(1);
-  }
-
-  try {
-    execSync('node scripts/build-fwd-zig.js', {
+    execSync('node scripts/build-fwd-rust.js', {
       cwd: webRoot,
       stdio: 'inherit',
       shell: true,
     });
   } catch (e) {
-    console.error('Failed to build zig forwarder:', e.message);
+    console.error('Failed to build Rust forwarder:', e.message);
     process.exit(1);
   }
 }

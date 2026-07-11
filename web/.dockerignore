@@ -1,8 +1,7 @@
 node_modules
 node-pty/node_modules
 .node-builds
-.zig-cache
-zig-out*
+native/vt-fwd/target
 __pycache__
 dist
 coverage

@@ -5,11 +5,13 @@ on:
     branches: [ main, npm-build ]
     paths:
       - 'web/**'
+      - 'native/vt-fwd/**'
       - '.github/workflows/npm-test.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'web/**'
+      - 'native/vt-fwd/**'
       - '.github/workflows/npm-test.yml'
 
 permissions:
@@ -17,6 +19,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RUST_TOOLCHAIN: 1.97.0
 
 defaults:
   run:
@@ -48,10 +51,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev build-essential python3 make g++
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.16.0
+      - name: Setup Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+          host_target="$(rustc +"$RUST_TOOLCHAIN" -vV | sed -n 's/^host: //p')"
+          rustup target add --toolchain "$RUST_TOOLCHAIN" "$host_target"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -64,6 +69,9 @@ jobs:
 
       - name: Build npm package
         run: pnpm run build:npm -- --current-only
+
+      - name: Test npm package Docker image
+        run: pnpm run test:npm-docker-package vibetunnel-*.tgz
 
       - name: Test npm package installation
         run: |

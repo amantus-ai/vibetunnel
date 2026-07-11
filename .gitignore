@@ -119,10 +119,8 @@ server/vibetunnel-fwd
 linux/vibetunnel
 *.o
 
-# Zig build artifacts
-native/vt-fwd/.zig-cache/
-native/vt-fwd/zig-out/
-native/vt-fwd/zig-out-*/
+# Rust forwarder build artifacts
+native/vt-fwd/target/
 web/bin/vibetunnel-fwd
 web/native/vibetunnel-fwd
 __pycache__/

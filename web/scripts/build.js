@@ -74,10 +74,10 @@ async function build() {
 
   await buildCli();
 
-  // Build zig forwarder first.
+  // Build Rust forwarder first.
   // `build-native.js` runs verification in CI which expects the forwarder to exist.
-  console.log('Building zig forwarder...');
-  execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
+  console.log('Building Rust forwarder...');
+  execSync('node scripts/build-fwd-rust.js', { stdio: 'inherit' });
 
 
   const shouldBuildSea =

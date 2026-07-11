@@ -1,7 +1,7 @@
 <!-- Generated: 2025-06-21 16:24:00 UTC -->
 # Build System
 
-VibeTunnel uses platform-specific build systems for each component: Xcode for macOS and iOS applications, pnpm for the web frontend, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
+VibeTunnel uses platform-specific build systems for each component: Xcode for macOS and iOS applications, pnpm for the web frontend, Cargo for the native forwarder, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
 
 The main build orchestration happens through shell scripts in `mac/scripts/` that coordinate building native applications, bundling the web frontend, and packaging everything together. Release builds include code signing, notarization, DMG creation, and automated GitHub releases with Sparkle update support.
 
@@ -58,6 +58,17 @@ node build-native.js
 - `web/package.json` - Build scripts and dependencies (lines 6-34)
 - `web/build-native.js` - Bun compilation and native module bundling (lines 83-135)
 
+### Native Forwarder Build
+
+Rustup selects Rust 1.97.0 from `native/vt-fwd/rust-toolchain.toml`:
+
+```bash
+cd native/vt-fwd
+cargo build --release --locked
+```
+
+The binary is written to `native/vt-fwd/target/release/vibetunnel-fwd`. Web and macOS build scripts copy it into their packaged resources.
+
 ### iOS Application Build
 
 **Generate Xcode Project** - From project.yml:
@@ -95,6 +106,7 @@ cd mac
 - Xcode 16.0+ with command line tools
 - Node.js 22.12 through 24.x and pnpm
 - Bun runtime (installed via npm)
+- Rustup; the forwarder toolchain is pinned by `native/vt-fwd/rust-toolchain.toml`
 - xcbeautify (optional, for cleaner output)
 
 **Release Requirements**:
@@ -112,6 +124,7 @@ cd mac
 **Tools**:
 - Node.js 22.12 through 24.x with npm
 - Bun runtime for standalone builds
+- Rustup for native forwarder builds
 
 **Native Modules**:
 - `@homebridge/node-pty-prebuilt-multiarch` - Terminal emulation
@@ -119,6 +132,7 @@ cd mac
   - `pty.node` - Native PTY module
   - `spawn-helper` - Process spawning helper
   - `vibetunnel` - Bun executable
+  - `vibetunnel-fwd` - Rust terminal forwarder
 
 ### Linux (Ubuntu) Requirements
 
@@ -128,7 +142,7 @@ cd mac
 
 **Tooling**:
 - Node.js 22.12 through 24.x (NodeSource 24.x recommended)
-- Zig (latest stable)
+- Rust 1.97.0 (pinned by `native/vt-fwd/rust-toolchain.toml`)
 
 **Bootstrap**:
 ```bash

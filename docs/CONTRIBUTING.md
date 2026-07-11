@@ -16,7 +16,8 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
 2. **Xcode 16.0+** with Swift 6.0 support
 3. **Node.js 22.12 through 24.x**: `brew install node@24`
 4. **Bun runtime**: `curl -fsSL https://bun.sh/install | bash`
-5. **Git**: For version control
+5. **Rustup**: The native forwarder toolchain is pinned by `native/vt-fwd/rust-toolchain.toml`
+6. **Git**: For version control
 
 ### Getting Started
 
@@ -151,6 +152,8 @@ vibetunnel/
 │
 ├── ios/                   # iOS companion app
 │   └── VibeTunnel/        # Swift source code
+│
+├── native/vt-fwd/         # Rust terminal forwarder
 │
 ├── web/                   # Web server and frontend
 │   ├── src/
