@@ -36,11 +36,11 @@ vibetunnel --no-auth
 ### Docker
 
 ```bash
-# Build from source
-git clone https://github.com/amantus-ai/vibetunnel.git
-cd vibetunnel/web
-docker build -f Dockerfile.standalone -t vibetunnel \
-  --build-arg VT_FWD_COMMIT="$(git rev-parse HEAD)" .
+# Extract the published package and build its runtime-only image
+npm pack vibetunnel
+mkdir vibetunnel-docker
+tar -xzf vibetunnel-*.tgz --strip-components=1 -C vibetunnel-docker
+docker build -f vibetunnel-docker/Dockerfile.standalone -t vibetunnel vibetunnel-docker
 
 # Mount your code and run with tunnel
 docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
@@ -48,6 +48,9 @@ docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
 # Or with Cloudflare tunnel
 docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare
 ```
+
+The packaged Dockerfile consumes only published runtime files. Repository builds
+continue to use the source-oriented `web/Dockerfile.standalone`.
 
 ## 🌐 Remote Access with Ngrok
 

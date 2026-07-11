@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the Zig terminal forwarder with Rust and pinned its Cargo toolchain, while preserving glibc 2.28 compatibility for prebuilt Linux binaries.
+
+### Fixed
+
+- Made the Dockerfile bundled in npm packages build and run directly from packaged runtime artifacts.
+
 ## [1.0.0-beta.17] - 2026-07-03
 
 ### Added

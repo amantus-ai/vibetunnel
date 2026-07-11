@@ -491,6 +491,7 @@ YOUR_PRIVATE_KEY_CONTENT
   # Install Bun
   curl -fsSL https://bun.sh/install | bash
   ```
+- Rustup; `native/vt-fwd/rust-toolchain.toml` pins the release forwarder toolchain
 - GitHub CLI authenticated: `gh auth status`
 - Apple Developer ID certificate in Keychain
 - Sparkle tools in `~/.local/bin/` (sign_update, generate_appcast)

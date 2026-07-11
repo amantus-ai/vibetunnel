@@ -17,7 +17,7 @@ npm run build
 - Installs system deps: `curl`, `ca-certificates`, `xz-utils`, `python3`, `make`, `g++`, `git`
 - Installs `libpam0g-dev` for PAM auth native module
 - Installs checksum-verified Node.js 24.16.0 if missing or too old
-- Installs checksum-verified Zig 0.16.0
+- Installs rustup and the Rust 1.97.0 toolchain pinned by `native/vt-fwd/rust-toolchain.toml`
 
 ## SEA on Linux (disabled by default)
 SEA builds are skipped on Linux unless explicitly enabled.
@@ -56,5 +56,5 @@ systemctl --user status vibetunnel
 
 ## Troubleshooting
 - `pnpm` missing during build: use npm (`npm install && npm run build`) or install pnpm.
-- `zig` missing: rerun `web/scripts/linux-bootstrap.sh`.
+- `cargo` or `rustc` missing: rerun `web/scripts/linux-bootstrap.sh`.
 - `pam_appl.h` missing: `sudo apt-get install -y libpam0g-dev`.

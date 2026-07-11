@@ -8,6 +8,7 @@ This guide helps the repository owner publish VibeTunnel to npm as a standalone 
 2. **Node.js 22.12 through 24.x** installed
 3. **Apple Silicon Mac** for the complete multi-platform package
 4. **Docker** installed (for Linux builds)
+5. **Rustup** installed; `native/vt-fwd/rust-toolchain.toml` pins the forwarder toolchain
 
 ## Publishing Checklist
 
@@ -27,20 +28,20 @@ vim package.json package.npm.json
 pnpm run clean
 pnpm run build:npm
 
-# This creates dist-npm/ with:
+# This creates dist-npm/ and vibetunnel-<version>.tgz with:
 # - Compiled JavaScript (lib/)
 # - Static files (public/)
-# - Prebuilt binaries for all platforms
+# - Native-module prebuilds (prebuilds/)
+# - Rust forwarders (forwarders/<platform>-<arch>/vibetunnel-fwd)
 # - Package.json ready for publishing
 ```
 
 ### 3. Test Locally
 
 ```bash
-# Test the package locally before publishing
-cd dist-npm/
-npm pack
-npm install -g vibetunnel-*.tgz
+# build:npm runs npm pack in dist-npm/ and moves the archive here, to web/
+pnpm run test:npm-package ./vibetunnel-*.tgz
+npm install -g ./vibetunnel-*.tgz
 
 # Test basic functionality
 vibetunnel --version
@@ -53,14 +54,11 @@ vibetunnel --no-auth --ngrok
 # Cleanup
 npm uninstall -g vibetunnel
 rm vibetunnel-*.tgz
-cd ..
 ```
 
 ### 4. Publish to npm
 
 ```bash
-cd dist-npm/
-
 # Login to npm (first time only)
 npm login
 # Username: [your-username]
@@ -68,8 +66,8 @@ npm login
 # Email: [your-email]
 # OTP: [if 2FA enabled]
 
-# Publish
-npm publish
+# Publish the exact archive tested above
+npm publish ./vibetunnel-<version>.tgz
 ```
 
 ### 5. Verify Publication
@@ -96,15 +94,31 @@ The package is configured with:
 - **Platforms**: macOS (x64, arm64) and Linux (x64, arm64)
 - **Node**: Requires Node.js 22+
 
+## Rust Forwarder Outputs
+
+`pnpm run build` builds the host forwarder and installs it at `native/vibetunnel-fwd` and `bin/vibetunnel-fwd` under `web/`.
+
+`pnpm run build:npm` additionally stages the selected package targets at:
+
+```text
+web/forwarders/darwin-arm64/vibetunnel-fwd
+web/forwarders/darwin-x64/vibetunnel-fwd
+web/forwarders/linux-arm64/vibetunnel-fwd
+web/forwarders/linux-x64/vibetunnel-fwd
+```
+
+The selected directories are copied unchanged to `web/dist-npm/forwarders/` and then into the package archive. At runtime the CLI selects `forwarders/<process.platform>-<process.arch>/vibetunnel-fwd`; the postinstall script makes that binary executable. A complete macOS build creates all four targets. Filtered and `--current-only` builds include only their selected targets.
+
 ## What Gets Published
 
 The npm package includes:
 - ✅ Compiled JavaScript (`lib/`)
 - ✅ Web UI files (`public/`)
 - ✅ CLI binary (`bin/vibetunnel`)
+- ✅ Rust forwarders (`forwarders/<platform>-<arch>/vibetunnel-fwd`)
 - ✅ Prebuilt native binaries (`prebuilds/`)
 - ✅ README files (README.md, README.npm.md, README.standalone.md)
-- ✅ Dockerfile for containerization
+- ✅ Runtime-only Dockerfile for building directly from extracted package contents
 - ✅ Postinstall scripts
 
 Not included:
@@ -194,7 +208,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: cd web && pnpm install
       - run: cd web && pnpm run build:npm
-      - run: cd web/dist-npm && npm publish
+      - run: cd web && npm publish ./vibetunnel-*.tgz
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 ```

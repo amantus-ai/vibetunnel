@@ -30,7 +30,7 @@ The project provides a native macOS menu bar application that runs a local HTTP 
 
 **Web Server** - Node.js/TypeScript with Bun runtime
 - HTTP/WebSocket server: `web/src/server/server.ts`
-- Terminal forwarding: Zig forwarder `vibetunnel-fwd` (`native/vt-fwd`)
+- Terminal forwarding: Rust native forwarder `vibetunnel-fwd` (`native/vt-fwd`); see [Native Forwarder](forwarder.md)
 - Session management: `web/src/server/lib/sessions.ts`
 - PTY integration: `@homebridge/node-pty-prebuilt-multiarch`
 
@@ -72,7 +72,7 @@ The project provides a native macOS menu bar application that runs a local HTTP 
 
 **Server Platforms**
 - Primary: Bun runtime (Node.js compatible)
-- Build requirements: Node.js 22.12 through 24.x, npm/bun
+- Build requirements: Node.js 22.12 through 24.x, npm/bun, and rustup for the native forwarder
 - Supports macOS, Linux, and headless environments
 
 **Key Platform Files**

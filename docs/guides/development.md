@@ -7,24 +7,25 @@
 - Xcode 16.0+
 - Node.js 22.12 through 24.x
 - Bun 1.0+
+- Rustup (`native/vt-fwd/rust-toolchain.toml` pins the forwarder toolchain)
 
 ### Clone & Build
 
 ```bash
 # Clone repository
-git clone https://github.com/steipete/vibetunnel
+git clone https://github.com/amantus-ai/vibetunnel.git
 cd vibetunnel
 
 # Install dependencies
-cd web && pnpm install && cd ..
+(cd web && pnpm install)
 
-# Build everything
-./scripts/build-all.sh
+# Build the macOS app, including the web assets and Rust forwarder
+(cd mac && ./scripts/build.sh --configuration Debug)
 
-# Or build individually
-cd mac && ./scripts/build.sh
-cd ios && xcodebuild
-cd web && pnpm build
+# Build the iOS app separately
+(cd ios && xcodebuild -project VibeTunnel-iOS.xcodeproj \
+  -scheme VibeTunnel-iOS -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' build)
 ```
 
 ## Project Structure
@@ -38,6 +39,7 @@ vibetunnel/
 │   └── scripts/           # Build scripts
 ├── ios/                    # iOS app
 │   └── VibeTunnel/        # Swift sources
+├── native/vt-fwd/          # Rust terminal forwarder
 └── web/                    # Server & frontend
     ├── src/
     │   ├── server/        # Node.js server
@@ -208,20 +210,20 @@ node --inspect dist/server/server.js
 cd mac
 ./scripts/build.sh                    # Release build
 ./scripts/build.sh --configuration Debug
-./scripts/build.sh --sign             # With signing
+./scripts/build.sh --no-sign          # Disable code signing
 ```
 
 ### Web Build
 ```bash
 cd web
-pnpm build                            # Production build
-pnpm build:server                     # Server only
-pnpm build:client                     # Client only
+pnpm build                            # Production build, including the Rust forwarder
+node scripts/build-fwd-rust.js        # Rust forwarder only
 ```
 
 ### Release Build
 ```bash
-./scripts/release.sh 1.0.0           # Full release
+cd mac
+./scripts/release.sh stable           # Full stable release
 ```
 
 ## Code Quality

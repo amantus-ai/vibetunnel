@@ -196,7 +196,7 @@ Cell Type Byte:
 └── Bits 1-0: Character type (00=space, 01=ASCII, 10=Unicode)
 ```
 
-## vibetunnel-fwd (Zig forwarder)
+## vibetunnel-fwd (Rust forwarder)
 
 The `vibetunnel-fwd` binary (`native/vt-fwd`) wraps any command in a VibeTunnel session:
 
