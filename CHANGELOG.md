@@ -1,6 +1,8 @@
 # Changelog
 
-## [1.0.0-beta.18] - 2026-07-10
+## [1.0.0-beta.19] - Unreleased
+
+## [1.0.0-beta.18] - 2026-07-11
 
 ### Changed
 
