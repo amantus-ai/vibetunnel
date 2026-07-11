@@ -3,6 +3,8 @@
 import json
 import os
 from pathlib import Path
+import signal
+import shutil
 import socket
 import stat
 import struct
@@ -46,6 +48,9 @@ def main():
         env["VIBETUNNEL_LOG_LEVEL"] = "debug"
 
         test_exit_and_artifacts(binary, control_dir, env)
+        test_non_utf8_option_values(binary, control_dir, env)
+        test_rust_min_stack_is_child_only(binary, env)
+        test_child_sigpipe(binary, control_dir, env)
         test_binary_output(binary, control_dir, env)
         test_ipc(binary, control_dir, env)
 
@@ -98,6 +103,95 @@ def test_binary_output(binary, control_dir, env):
         row[2] for row in rows if isinstance(row, list) and len(row) == 3 and row[1] == "o"
     )
     assert "DONE" in output_text and "\ufffd" in output_text
+
+
+def test_non_utf8_option_values(binary, control_dir, env):
+    session_id = b"raw_options"
+    raw_log_path = os.fsencode(control_dir.parent / "log-") + b"\xff"
+    raw_binary = os.fsencode(binary)
+    true_binary = shutil.which("true")
+    assert true_binary is not None
+    proc = subprocess.run(
+        [
+            raw_binary,
+            b"--session-id",
+            session_id,
+            b"--log-file",
+            raw_log_path,
+            os.fsencode(true_binary),
+        ],
+        env=env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stderr)
+    replacement_log_path = raw_log_path[:-1] + "\ufffd".encode()
+    assert not os.path.exists(replacement_log_path)
+    if sys.platform == "darwin":
+        # APFS rejects malformed UTF-8 path components with EILSEQ. The
+        # important parity check here is that no replacement path is created.
+        assert not os.path.exists(raw_log_path)
+    else:
+        assert os.path.exists(raw_log_path)
+
+    updater = subprocess.run(
+        [
+            raw_binary,
+            b"--session-id",
+            session_id,
+            b"--update-title",
+            b"raw\xfftitle",
+        ],
+        env=env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert updater.returncode == 0, (updater.returncode, updater.stderr)
+    info = json.loads((control_dir / os.fsdecode(session_id) / "session.json").read_text())
+    assert info["name"] == "rawtitle"
+
+
+def test_child_sigpipe(binary, control_dir, env):
+    session_id = "child_sigpipe"
+    proc = subprocess.Popen(
+        [binary, "--session-id", session_id, "/bin/sleep", "30"],
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    session_path = control_dir / session_id / "session.json"
+    child_pid = None
+
+    def session_is_running():
+        nonlocal child_pid
+        try:
+            info = json.loads(session_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return False
+        child_pid = info.get("pid")
+        return info.get("status") == "running" and isinstance(child_pid, int)
+
+    wait_for(session_is_running, "SIGPIPE child pid")
+    os.kill(child_pid, signal.SIGPIPE)
+    _, stderr = proc.communicate(timeout=10)
+    assert proc.returncode == 141, (proc.returncode, stderr)
+    info = json.loads(session_path.read_text())
+    assert info["status"] == "exited" and info["exitCode"] == 141
+
+
+def test_rust_min_stack_is_child_only(binary, env):
+    child_env = env.copy()
+    child_env["RUST_MIN_STACK"] = "9000000000000000000"
+    true_binary = shutil.which("true")
+    assert true_binary is not None
+    proc = subprocess.run(
+        [binary, "--session-id", "rust_min_stack", true_binary],
+        env=child_env,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stderr)
 
 
 def test_ipc(binary, control_dir, env):
