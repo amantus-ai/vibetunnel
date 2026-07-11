@@ -49,6 +49,7 @@ Options:\n\
 
 type AnyError = Box<dyn Error + Send + Sync>;
 const WORKER_STACK_BYTES: usize = 2 * 1024 * 1024;
+const PTY_WRITE_POLL_MS: libc::c_int = 50;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 enum TitleMode {
@@ -224,14 +225,9 @@ fn run() -> Result<i32, AnyError> {
         return Ok(0);
     }
 
-    let home = match env::var("HOME") {
-        Ok(home) => home,
-        Err(env::VarError::NotPresent) => String::new(),
-        Err(env::VarError::NotUnicode(_)) => {
-            return Err(invalid_arguments("HOME is not valid UTF-8").into());
-        }
-    };
-    let default_log_path = default_log_path(&home);
+    let home_path = env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    let home = home_path.to_string_lossy().into_owned();
+    let default_log_path = default_log_path(&home_path);
     let logger = Arc::new(Logger::new(
         verbosity,
         Some(log_file.as_deref().unwrap_or(&default_log_path)),
@@ -247,7 +243,9 @@ fn run() -> Result<i32, AnyError> {
             return Err(invalid_arguments("invalid session id").into());
         }
 
-        let path = control_path(&home).join(&session_id).join("session.json");
+        let path = control_path(&home_path)
+            .join(&session_id)
+            .join("session.json");
         let sanitized = title::sanitize_title(raw_title.as_bytes());
         if let Err(error) = session::update_session_name(&path, &sanitized) {
             logger.error(format_args!("failed to update session title: {error}"));
@@ -264,7 +262,7 @@ fn run() -> Result<i32, AnyError> {
 
     let cwd_path = env::current_dir()?;
     let cwd = cwd_path.to_string_lossy().into_owned();
-    let control_path = control_path(&home);
+    let control_path = control_path(&home_path);
     let session_id = requested_session_id.unwrap_or_else(generate_session_id);
     if !is_valid_session_id(&session_id) {
         logger.error(format_args!("invalid session id: {session_id}"));
@@ -408,6 +406,9 @@ fn run() -> Result<i32, AnyError> {
     }
 
     running.store(false, Ordering::Release);
+    if !forward_pending_signal(pid, received_signal.as_ref()) && main_loop_error.is_some() {
+        terminate_child(pid);
+    }
     if let Some(mode) = raw_mode.as_mut() {
         mode.restore();
     }
@@ -416,14 +417,7 @@ fn run() -> Result<i32, AnyError> {
     let _ = session_thread.join();
     let _ = resize_thread.join();
 
-    let signal = received_signal.load(Ordering::Acquire);
-    if signal != 0 {
-        signal_process_group(pid, signal);
-    } else if main_loop_error.is_some() {
-        terminate_child(pid);
-    }
-
-    let exit_info = match wait_for_child(pid) {
+    let exit_info = match wait_for_child_forwarding_signals(pid, received_signal.as_ref()) {
         Ok(info) => info,
         Err(error) => {
             logger.error(format_args!("waitpid failed: {error}"));
@@ -561,22 +555,22 @@ fn is_truthy(value: &str) -> bool {
     value.eq_ignore_ascii_case("1") || value.eq_ignore_ascii_case("true")
 }
 
-fn default_log_path(home: &str) -> PathBuf {
-    if home.is_empty() {
+fn default_log_path(home: &Path) -> PathBuf {
+    if home.as_os_str().is_empty() {
         PathBuf::from("./.vibetunnel/log.txt")
     } else {
-        Path::new(home).join(".vibetunnel/log.txt")
+        home.join(".vibetunnel/log.txt")
     }
 }
 
-fn control_path(home: &str) -> PathBuf {
+fn control_path(home: &Path) -> PathBuf {
     if let Some(path) = env::var_os("VIBETUNNEL_CONTROL_DIR") {
         return PathBuf::from(path);
     }
-    if home.is_empty() {
+    if home.as_os_str().is_empty() {
         PathBuf::from("./.vibetunnel/control")
     } else {
-        Path::new(home).join(".vibetunnel/control")
+        home.join(".vibetunnel/control")
     }
 }
 
@@ -828,8 +822,8 @@ fn install_signal_handlers(
         // which are async-signal-safe and cannot unwind.
         unsafe {
             signal_hook::low_level::register(signal, move || {
-                running.store(false, Ordering::Release);
                 received_signal.store(signal, Ordering::Release);
+                running.store(false, Ordering::Release);
             })?;
         }
     }
@@ -891,12 +885,74 @@ fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn write_to_pty(context: &SessionContext, data: &[u8], record_input: bool) {
     let _guard = lock_unpoisoned(&context.pty_mutex);
-    if write_fd_all(context.pty.master_fd(), data).is_err() {
+    if write_pty_all(context, data).is_err() {
         return;
     }
     if record_input {
         let _ = context.asciinema.write_input(data);
     }
+}
+
+fn write_pty_all(context: &SessionContext, data: &[u8]) -> io::Result<()> {
+    let fd = context.pty.master_fd();
+    let mut offset = 0;
+    while offset < data.len() {
+        if !context.running.load(Ordering::Acquire) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "forwarder is shutting down",
+            ));
+        }
+
+        // SAFETY: the remaining slice is valid for the duration of `write`.
+        let written = unsafe {
+            libc::write(
+                fd,
+                data[offset..].as_ptr().cast::<libc::c_void>(),
+                data.len() - offset,
+            )
+        };
+        if written > 0 {
+            offset += written as usize;
+            continue;
+        }
+        if written == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::WriteZero,
+                "PTY write returned zero",
+            ));
+        }
+
+        let error = io::Error::last_os_error();
+        if error.kind() == io::ErrorKind::Interrupted {
+            continue;
+        }
+        if error.kind() != io::ErrorKind::WouldBlock {
+            return Err(error);
+        }
+
+        let mut poll_fd = libc::pollfd {
+            fd,
+            events: libc::POLLOUT,
+            revents: 0,
+        };
+        // SAFETY: poll_fd remains valid throughout the call.
+        let ready = unsafe { libc::poll(&raw mut poll_fd, 1, PTY_WRITE_POLL_MS) };
+        if ready < 0 {
+            let error = io::Error::last_os_error();
+            if error.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(error);
+        }
+        if ready > 0 && poll_fd.revents & (libc::POLLERR | libc::POLLHUP | libc::POLLNVAL) != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "PTY closed while waiting to write",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn write_fd_all(fd: RawFd, data: &[u8]) -> io::Result<()> {
@@ -1059,6 +1115,9 @@ fn main_loop(context: &SessionContext, stdin_fd: RawFd) -> io::Result<()> {
             };
             if read < 0 {
                 let error = io::Error::last_os_error();
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    continue;
+                }
                 match error.raw_os_error() {
                     Some(libc::EINTR) => continue,
                     Some(libc::EIO) => break,
@@ -1144,6 +1203,15 @@ fn signal_process_group(pid: libc::pid_t, signal: i32) {
     }
 }
 
+fn forward_pending_signal(pid: libc::pid_t, received_signal: &AtomicI32) -> bool {
+    let signal = received_signal.swap(0, Ordering::AcqRel);
+    if signal == 0 {
+        return false;
+    }
+    signal_process_group(pid, signal);
+    true
+}
+
 fn terminate_child(pid: libc::pid_t) {
     signal_process_group(pid, libc::SIGTERM);
 }
@@ -1158,6 +1226,31 @@ fn wait_for_child(pid: libc::pid_t) -> io::Result<ExitInfo> {
         }
         let error = io::Error::last_os_error();
         if error.raw_os_error() == Some(libc::EINTR) {
+            continue;
+        }
+        return Err(error);
+    }
+}
+
+fn wait_for_child_forwarding_signals(
+    pid: libc::pid_t,
+    received_signal: &AtomicI32,
+) -> io::Result<ExitInfo> {
+    loop {
+        forward_pending_signal(pid, received_signal);
+        let mut status = 0;
+        // WNOHANG keeps signal delivery race-free: every pending signal is
+        // drained before the next bounded wait for child exit.
+        let result = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
+        if result == pid {
+            return Ok(decode_exit_status(status as u32));
+        }
+        if result == 0 {
+            thread::sleep(Duration::from_millis(25));
+            continue;
+        }
+        let error = io::Error::last_os_error();
+        if error.kind() == io::ErrorKind::Interrupted {
             continue;
         }
         return Err(error);
@@ -1299,5 +1392,11 @@ mod tests {
         let command = vec![OsString::from("/bin/echo"), OsString::from_vec(vec![0xff])];
         let data = ExecData::build(&command, "test-session").expect("build exec data");
         assert_eq!(data._argv_storage[1].as_bytes(), &[0xff]);
+    }
+
+    #[test]
+    fn default_paths_preserve_non_utf8_home() {
+        let home = PathBuf::from(OsString::from_vec(b"/tmp/home-\xff".to_vec()));
+        assert_eq!(default_log_path(&home), home.join(".vibetunnel/log.txt"));
     }
 }

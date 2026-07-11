@@ -28,6 +28,21 @@ impl Pty {
             }
         }
 
+        // PTY input can fill when the child stops reading. Nonblocking writes
+        // let the forwarder observe shutdown instead of pinning a worker.
+        let status_flags = unsafe { libc::fcntl(master.as_raw_fd(), libc::F_GETFL) };
+        if status_flags < 0
+            || unsafe {
+                libc::fcntl(
+                    master.as_raw_fd(),
+                    libc::F_SETFL,
+                    status_flags | libc::O_NONBLOCK,
+                )
+            } < 0
+        {
+            return Err(io::Error::last_os_error());
+        }
+
         let mut attrs = tcgetattr(&master)?;
         attrs.input_flags.insert(InputFlags::IUTF8);
         tcsetattr(&master, SetArg::TCSANOW, &attrs)?;
@@ -96,5 +111,8 @@ mod tests {
         let actual = pty.get_size().expect("read PTY size");
         assert_eq!(actual.ws_row, requested.ws_row);
         assert_eq!(actual.ws_col, requested.ws_col);
+        // SAFETY: F_GETFL only reads descriptor flags.
+        let flags = unsafe { libc::fcntl(pty.master_fd(), libc::F_GETFL) };
+        assert!(flags >= 0 && flags & libc::O_NONBLOCK != 0);
     }
 }
