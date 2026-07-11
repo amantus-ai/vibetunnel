@@ -6,6 +6,31 @@
         <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
+            <title>VibeTunnel 1.0.0 Beta 18</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.18/VibeTunnel-1.0.0-beta.18.dmg</link>
+            <sparkle:version>208</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.18</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0 Beta 18</h2><p><strong>Pre-release version</strong></p><div><h3>Changed</h3>
+<ul>
+<li>Replaced the Zig terminal forwarder with Rust and pinned its Cargo toolchain, while preserving glibc 2.28 compatibility for prebuilt Linux binaries.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>Made the Dockerfile bundled in npm packages build and run directly from packaged runtime artifacts.</li>
+</ul>
+<p><a href="https://github.com/amantus-ai/vibetunnel/blob/main/CHANGELOG.md#100-beta18-20260711">View full changelog</a></p></div>
+            ]]></description>
+            <pubDate>Sat, 11 Jul 2026 08:28:33 +0100</pubDate>
+            <enclosure
+                url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.18/VibeTunnel-1.0.0-beta.18.dmg"
+                length="26026227"
+                type="application/octet-stream"
+                sparkle:edSignature="6eMm2NAYiRW6rROZBp9Z8UZOaZbvXYx94GyN4rWZrMzSbg5tkFVMzZ1+vaQpM+IByD9chQwHalz/2eOs5c95Cg=="
+            />
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+        </item>
+        <item>
             <title>VibeTunnel 1.0.0 Beta 17</title>
             <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.17/VibeTunnel-1.0.0-beta.17.dmg</link>
             <sparkle:version>207</sparkle:version>
