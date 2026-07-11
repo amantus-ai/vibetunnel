@@ -14,24 +14,31 @@ RUN apt-get update && apt-get install -y \
     libpam0g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the pinned Zig release for vibetunnel-fwd builds.
+# Install the pinned Rust toolchain for vibetunnel-fwd builds.
 SHELL ["/bin/bash", "-c"]
-ARG ZIG_VERSION=0.16.0
-ARG ZIG_AMD64_SHA256=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00
-ARG ZIG_ARM64_SHA256=ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17
+ARG RUST_VERSION=1.97.0
+ARG RUSTUP_VERSION=1.29.0
+ARG RUSTUP_AMD64_SHA256=4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10
+ARG RUSTUP_ARM64_SHA256=9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:${PATH}
 RUN set -euo pipefail; \
     arch="$(uname -m)"; \
     case "$arch" in \
-      aarch64|arm64) zig_arch="aarch64-linux"; zig_sha="$ZIG_ARM64_SHA256";; \
-      x86_64|amd64) zig_arch="x86_64-linux"; zig_sha="$ZIG_AMD64_SHA256";; \
+      aarch64|arm64) rust_target="aarch64-unknown-linux-gnu"; rustup_sha="$RUSTUP_ARM64_SHA256";; \
+      x86_64|amd64) rust_target="x86_64-unknown-linux-gnu"; rustup_sha="$RUSTUP_AMD64_SHA256";; \
       *) echo "unsupported arch: $arch" >&2; exit 1;; \
     esac; \
-    zig_url="https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-${ZIG_VERSION}.tar.xz"; \
-    curl -fsSL "$zig_url" -o /tmp/zig.tar.xz; \
-    echo "${zig_sha}  /tmp/zig.tar.xz" | sha256sum -c -; \
-    mkdir -p /usr/local/zig /usr/local/bin; \
-    tar -xf /tmp/zig.tar.xz -C /usr/local/zig --strip-components=1; \
-    ln -sf /usr/local/zig/zig /usr/local/bin/zig
+    rustup_url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rust_target}/rustup-init"; \
+    curl --proto '=https' --tlsv1.2 -fsSL "$rustup_url" -o /tmp/rustup-init; \
+    echo "${rustup_sha}  /tmp/rustup-init" | sha256sum -c -; \
+    chmod +x /tmp/rustup-init; \
+    /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "$RUST_VERSION"; \
+    rm /tmp/rustup-init; \
+    host_target="$(rustc +"$RUST_VERSION" -vV | sed -n 's/^host: //p')"; \
+    rustup target add --toolchain "$RUST_VERSION" "$host_target"; \
+    rustc +"$RUST_VERSION" --version | grep -F "rustc $RUST_VERSION "
 
 # Set working directory
 WORKDIR /app
@@ -49,6 +56,16 @@ COPY native/vt-fwd ./native/vt-fwd
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
+
+# Build and install the native forwarder with Cargo.
+RUN set -euo pipefail; \
+    version="$(node -p 'require("./package.json").version')"; \
+    VIBETUNNEL_VERSION="$version" \
+      cargo +"$RUST_VERSION" build --locked --release \
+        --manifest-path native/vt-fwd/Cargo.toml; \
+    mkdir -p native bin; \
+    install -m 0755 native/vt-fwd/target/release/vibetunnel-fwd native/vibetunnel-fwd; \
+    install -m 0755 native/vt-fwd/target/release/vibetunnel-fwd bin/vibetunnel-fwd
 
 # Skip build for now - just test with source files
 # RUN pnpm run build:npm

@@ -1,0 +1,104 @@
+# VibeTunnel npm package runtime image
+# This Dockerfile is copied into the published package as Dockerfile.standalone.
+
+FROM node:24-trixie-slim@sha256:366fdef91728b1b7fa18c84fba63b6e79ed77b7e10cc206878e9705da4d7b169
+
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+
+# Keep the standalone image useful as a mounted development environment.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    make \
+    g++ \
+    git \
+    curl \
+    wget \
+    vim \
+    nano \
+    htop \
+    tree \
+    jq \
+    unzip \
+    ca-certificates \
+    openssh-client \
+    dash \
+    bash \
+    xz-utils \
+    libpam0g-dev \
+    && ln -sf /bin/dash /bin/sh \
+    && rm -rf /var/lib/apt/lists/*
+
+SHELL ["/bin/bash", "-c"]
+ARG NGROK_VERSION=3.39.7
+ARG NGROK_REPO_ASC_SHA256=8a57c28e1779e2a8e5bba3865fffd6805e15898988c235eae862f3069c3f2c28
+ARG CLOUDFLARED_VERSION=2026.6.0
+ARG CLOUDFLARED_AMD64_SHA256=08d27c4c5d3ed73ee3e98ef2ddceb4ad09fd4cfc28e243565a189538e8ccd706
+ARG CLOUDFLARED_ARM64_SHA256=8482ebf1e74a2a4a1a9f1e090e17e3de08423f94100ece6789287cb26fb9480f
+ARG NODE_GYP_VERSION=12.4.0
+
+# Install ngrok from its signed repository at an exact package version.
+RUN set -euo pipefail; \
+    curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc -o /tmp/ngrok.asc; \
+    echo "${NGROK_REPO_ASC_SHA256}  /tmp/ngrok.asc" | sha256sum -c -; \
+    mkdir -p /etc/apt/keyrings; \
+    install -m 0644 /tmp/ngrok.asc /etc/apt/keyrings/ngrok.asc; \
+    echo "deb [signed-by=/etc/apt/keyrings/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" \
+      > /etc/apt/sources.list.d/ngrok.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends "ngrok=${NGROK_VERSION}"; \
+    rm -rf /var/lib/apt/lists/* /tmp/ngrok.asc
+
+# Install cloudflared from a pinned release.
+RUN set -euo pipefail; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      aarch64|arm64) cloudflared_arch="arm64"; cloudflared_sha="$CLOUDFLARED_ARM64_SHA256";; \
+      x86_64|amd64) cloudflared_arch="amd64"; cloudflared_sha="$CLOUDFLARED_AMD64_SHA256";; \
+      *) echo "unsupported arch: $arch" >&2; exit 1;; \
+    esac; \
+    cloudflared_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-${cloudflared_arch}"; \
+    curl -fsSL "$cloudflared_url" -o /usr/local/bin/cloudflared; \
+    echo "${cloudflared_sha}  /usr/local/bin/cloudflared" | sha256sum -c -; \
+    chmod +x /usr/local/bin/cloudflared
+
+WORKDIR /app
+
+# Install only published runtime dependencies. Package lifecycle scripts run
+# after the bundled native assets are copied into the image.
+COPY package.json ./
+RUN npm install --global --no-audit --no-fund "node-gyp@${NODE_GYP_VERSION}" \
+    && npm install --omit=dev --ignore-scripts --no-audit --no-fund
+
+# npm's package allowlist defines this context. Copying it as a unit also lets
+# current-platform packages omit optional prebuild archives cleanly.
+COPY . .
+
+RUN set -euo pipefail; \
+    node scripts/postinstall.js; \
+    case "$(uname -m)" in \
+      aarch64|arm64) npm_arch="arm64";; \
+      x86_64|amd64) npm_arch="x64";; \
+      *) echo "unsupported arch: $(uname -m)" >&2; exit 1;; \
+    esac; \
+    forwarder="forwarders/linux-${npm_arch}/vibetunnel-fwd"; \
+    test -x "$forwarder"; \
+    "$forwarder" --help | grep -F "VibeTunnel Forward"
+
+RUN mkdir -p /workspace && chmod +x /app/scripts/docker-entrypoint.sh
+WORKDIR /workspace
+
+EXPOSE 4020
+
+ENV NODE_ENV=production
+ENV VIBETUNNEL_BUNDLED=true
+ENV BUILD_PUBLIC_PATH=/app/public
+ENV PORT=4020
+ENV PATH="/workspace/node_modules/.bin:${PATH}"
+
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+CMD ["--no-auth"]
+
+# Build this image from the root of an extracted VibeTunnel npm package:
+# docker build -f Dockerfile.standalone -t vibetunnel .
+# docker run -v "$(pwd):/workspace" -p 4020:4020 vibetunnel --no-auth

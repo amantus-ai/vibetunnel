@@ -38,6 +38,7 @@ jobs:
         filters: |
           web:
             - 'web/**'
+            - 'native/vt-fwd/**'
             - '.github/actions/lint-reporter/**'
             - '.github/actions/ci-status-comment/**'
             - '.github/workflows/node.yml'
@@ -47,6 +48,7 @@ jobs:
             - 'pnpm-workspace.yaml'
           mac:
             - 'mac/**'
+            - 'native/vt-fwd/**'
             - '.github/workflows/mac.yml'
             - 'VibeTunnel.xcworkspace/**'
             - 'Package.swift'

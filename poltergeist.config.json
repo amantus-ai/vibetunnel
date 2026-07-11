@@ -10,7 +10,12 @@
       "bundleId": "sh.vibetunnel.vibetunnel.debug",
       "watchPaths": [
         "./**/*.{swift,xcconfig,entitlements,plist}",
-        "./**/*.xcodeproj/**"
+        "./**/*.xcodeproj/**",
+        "./native/vt-fwd/src/**/*.rs",
+        "./native/vt-fwd/Cargo.toml",
+        "./native/vt-fwd/rust-toolchain.toml",
+        "./native/vt-fwd/Cargo.lock",
+        "./web/scripts/build-fwd-rust.js"
       ]
     },
     {

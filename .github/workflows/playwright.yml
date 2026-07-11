@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - 'native/vt-fwd/**'
       - '.github/workflows/playwright.yml'
 
 permissions:
@@ -14,6 +15,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RUST_TOOLCHAIN: 1.97.0
 
 jobs:
   test:
@@ -53,10 +55,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpam0g-dev xvfb
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-        with:
-          version: 0.16.0
+      - name: Setup Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+          host_target="$(rustc +"$RUST_TOOLCHAIN" -vV | sed -n 's/^host: //p')"
+          rustup target add --toolchain "$RUST_TOOLCHAIN" "$host_target"
           
       - name: Install dependencies
         working-directory: ./web

@@ -14,7 +14,7 @@
 # VALIDATION CHECKS:
 #   - Git repository status (clean working tree, main branch, synced)
 #   - Version information and build number validation
-#   - Required development tools (Zig, Node.js, pnpm, GitHub CLI, Sparkle tools)
+#   - Required development tools (Rust, Node.js, pnpm, GitHub CLI, Sparkle tools)
 #   - Code signing certificates and notarization credentials
 #   - Sparkle configuration (keys, appcast files)
 #   - IS_PRERELEASE_BUILD system configuration
@@ -25,7 +25,7 @@
 #
 # DEPENDENCIES:
 #   - git (repository management)
-#   - zig (native forwarder)
+#   - rustup with Rust 1.97.0 (native forwarder)
 #   - node/pnpm (web frontend build)
 #   - gh (GitHub CLI)
 #   - sign_update (Sparkle EdDSA signing)
@@ -222,17 +222,22 @@ echo ""
 # 4. Check required tools
 echo "📌 Required Tools:"
 
-# Zig toolchain
-REQUIRED_ZIG_VERSION="0.16.0"
-if command -v zig &> /dev/null; then
-    INSTALLED_ZIG_VERSION=$(zig version)
-    if [[ "$INSTALLED_ZIG_VERSION" == "$REQUIRED_ZIG_VERSION" ]]; then
-        check_pass "Zig $REQUIRED_ZIG_VERSION installed"
+# Rust toolchain
+REQUIRED_RUST_VERSION="1.97.0"
+if command -v rustup &> /dev/null; then
+    if RUSTC_VERSION=$(rustup run "$REQUIRED_RUST_VERSION" rustc --version 2>/dev/null) &&
+        CARGO_VERSION=$(rustup run "$REQUIRED_RUST_VERSION" cargo --version 2>/dev/null); then
+        if [[ "$RUSTC_VERSION" == "rustc $REQUIRED_RUST_VERSION "* ]] &&
+            [[ "$CARGO_VERSION" == "cargo $REQUIRED_RUST_VERSION "* ]]; then
+            check_pass "Rust $REQUIRED_RUST_VERSION toolchain installed"
+        else
+            check_fail "Rust $REQUIRED_RUST_VERSION required (found $RUSTC_VERSION; $CARGO_VERSION)"
+        fi
     else
-        check_fail "Zig $REQUIRED_ZIG_VERSION required (found $INSTALLED_ZIG_VERSION)"
+        check_fail "Rust $REQUIRED_RUST_VERSION toolchain not installed - run: rustup toolchain install $REQUIRED_RUST_VERSION"
     fi
 else
-    check_fail "Zig $REQUIRED_ZIG_VERSION not installed"
+    check_fail "rustup not installed - required for Rust $REQUIRED_RUST_VERSION"
 fi
 
 # Node.js

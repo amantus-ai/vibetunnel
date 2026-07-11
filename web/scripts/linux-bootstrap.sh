@@ -72,43 +72,49 @@ fi
 ${SUDO} corepack enable
 corepack prepare pnpm@10.15.0 --activate
 
-# Zig if missing. Keep this aligned with CI and Dockerfile.standalone.
-export ZIG_VERSION="${ZIG_VERSION:-0.16.0}"
-need_zig=1
-if command -v zig >/dev/null 2>&1 && [ "$(zig version)" = "$ZIG_VERSION" ]; then
-  need_zig=0
-fi
-if [ "$need_zig" -eq 1 ]; then
+# Install the pinned Rust toolchain for the invoking user.
+export RUST_VERSION="${RUST_VERSION:-1.97.0}"
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
+export PATH="$CARGO_HOME/bin:$PATH"
+if ! command -v rustup >/dev/null 2>&1; then
+  RUSTUP_VERSION="1.29.0"
   arch="$(uname -m)"
   case "$arch" in
     aarch64|arm64)
-      ZIG_TARGET="aarch64-linux"
-      zig_sha="ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17"
+      rust_target="aarch64-unknown-linux-gnu"
+      rustup_sha="9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792"
       ;;
     x86_64|amd64)
-      ZIG_TARGET="x86_64-linux"
-      zig_sha="70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00"
+      rust_target="x86_64-unknown-linux-gnu"
+      rustup_sha="4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10"
       ;;
     *) echo "unsupported arch: $arch"; exit 1;;
   esac
+  rustup_url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rust_target}/rustup-init"
+  curl --proto '=https' --tlsv1.2 -fsSL "$rustup_url" -o /tmp/rustup-init
+  echo "${rustup_sha}  /tmp/rustup-init" | sha256sum -c -
+  chmod +x /tmp/rustup-init
+  /tmp/rustup-init \
+    -y \
+    --no-modify-path \
+    --profile minimal \
+    --default-toolchain "$RUST_VERSION"
+  rm /tmp/rustup-init
+fi
+rustup toolchain install "$RUST_VERSION" --profile minimal --no-self-update
+host_target="$(rustc +"$RUST_VERSION" -vV | sed -n 's/^host: //p')"
+rustup target add --toolchain "$RUST_VERSION" "$host_target"
 
-  zig_url="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_TARGET}-${ZIG_VERSION}.tar.xz"
-
-  zig_root="/usr/local/zig"
-  zig_bin="/usr/local/bin"
-
-  ${SUDO} mkdir -p "$zig_root"
-  ${SUDO} mkdir -p "$zig_bin"
-  curl -fsSL "$zig_url" -o /tmp/zig.tar.xz
-  echo "${zig_sha}  /tmp/zig.tar.xz" | sha256sum -c -
-  ${SUDO} tar -xf /tmp/zig.tar.xz -C "$zig_root" --strip-components=1
-  ${SUDO} ln -sf "$zig_root/zig" "$zig_bin/zig"
+if [ -n "${GITHUB_PATH:-}" ]; then
+  printf '%s\n' "$CARGO_HOME/bin" >> "$GITHUB_PATH"
 fi
 
 node -v
 npm -v
 pnpm -v
-zig version
+rustc +"$RUST_VERSION" --version | grep -F "rustc $RUST_VERSION "
+cargo +"$RUST_VERSION" --version
 
 printf '\nNext steps:\n'
 echo "  cd web"

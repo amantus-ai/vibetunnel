@@ -135,7 +135,7 @@ async function handleForwardCommand(): Promise<void> {
     const forwarder = resolveForwarder();
     if (!forwarder) {
       logger.error(
-        `vibetunnel-fwd not found. Set VIBETUNNEL_FWD_BIN or build it: cd web && node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+        `vibetunnel-fwd not found. Set VIBETUNNEL_FWD_BIN or build it: cd web && node scripts/build-fwd-rust.js (cwd: ${process.cwd()})`
       );
       closeLogger();
       process.exit(1);

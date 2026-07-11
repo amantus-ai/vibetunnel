@@ -13,6 +13,7 @@
     "forwarders/",
     "scripts/postinstall.js",
     "scripts/install-vt-command.js",
+    "scripts/docker-entrypoint.sh",
     "node-pty/",
     "prebuilds/",
     "README.md",

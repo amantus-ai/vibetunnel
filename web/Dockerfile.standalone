@@ -29,11 +29,15 @@ RUN apt-get update && apt-get install -y \
     && ln -sf /bin/dash /bin/sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the pinned Zig release for vibetunnel-fwd builds.
+# Install the pinned Rust toolchain for vibetunnel-fwd builds.
 SHELL ["/bin/bash", "-c"]
-ARG ZIG_VERSION=0.16.0
-ARG ZIG_AMD64_SHA256=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00
-ARG ZIG_ARM64_SHA256=ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17
+ARG RUST_VERSION=1.97.0
+ARG RUSTUP_VERSION=1.29.0
+ARG RUSTUP_AMD64_SHA256=4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10
+ARG RUSTUP_ARM64_SHA256=9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:${PATH}
 ARG PNPM_VERSION=10.15.0
 ARG TYPESCRIPT_VERSION=7.0.2
 ARG TS_NODE_VERSION=10.9.2
@@ -46,17 +50,19 @@ ARG CLOUDFLARED_ARM64_SHA256=8482ebf1e74a2a4a1a9f1e090e17e3de08423f94100ece67892
 RUN set -euo pipefail; \
     arch="$(uname -m)"; \
     case "$arch" in \
-      aarch64|arm64) zig_arch="aarch64-linux"; zig_sha="$ZIG_ARM64_SHA256";; \
-      x86_64|amd64) zig_arch="x86_64-linux"; zig_sha="$ZIG_AMD64_SHA256";; \
+      aarch64|arm64) rust_target="aarch64-unknown-linux-gnu"; rustup_sha="$RUSTUP_ARM64_SHA256";; \
+      x86_64|amd64) rust_target="x86_64-unknown-linux-gnu"; rustup_sha="$RUSTUP_AMD64_SHA256";; \
       *) echo "unsupported arch: $arch" >&2; exit 1;; \
     esac; \
-    zig_url="https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-${ZIG_VERSION}.tar.xz"; \
-    mkdir -p /usr/local/zig /usr/local/bin; \
-    curl -fsSL "$zig_url" -o /tmp/zig.tar.xz; \
-    echo "${zig_sha}  /tmp/zig.tar.xz" | sha256sum -c -; \
-    tar -xf /tmp/zig.tar.xz -C /usr/local/zig --strip-components=1; \
-    ln -sf /usr/local/zig/zig /usr/local/bin/zig; \
-    zig version
+    rustup_url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rust_target}/rustup-init"; \
+    curl --proto '=https' --tlsv1.2 -fsSL "$rustup_url" -o /tmp/rustup-init; \
+    echo "${rustup_sha}  /tmp/rustup-init" | sha256sum -c -; \
+    chmod +x /tmp/rustup-init; \
+    /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "$RUST_VERSION"; \
+    rm /tmp/rustup-init; \
+    host_target="$(rustc +"$RUST_VERSION" -vV | sed -n 's/^host: //p')"; \
+    rustup target add --toolchain "$RUST_VERSION" "$host_target"; \
+    rustc +"$RUST_VERSION" --version | grep -F "rustc $RUST_VERSION "
 
 # Install ngrok from its signed repository at an exact package version.
 RUN set -euo pipefail; \
@@ -124,6 +130,16 @@ RUN if [ ! -d /app/native/vt-fwd ]; then \
       rm -rf /tmp/vt-src; \
     fi
 
+# Build and install the native forwarder with Cargo.
+RUN set -euo pipefail; \
+    version="$(node -p 'require("./package.json").version')"; \
+    VIBETUNNEL_VERSION="$version" \
+      cargo +"$RUST_VERSION" build --locked --release \
+        --manifest-path native/vt-fwd/Cargo.toml; \
+    mkdir -p native bin; \
+    install -m 0755 native/vt-fwd/target/release/vibetunnel-fwd native/vibetunnel-fwd; \
+    install -m 0755 native/vt-fwd/target/release/vibetunnel-fwd bin/vibetunnel-fwd
+
 # Build the project
 ENV VT_SKIP_VERSION_SYNC=1
 RUN ln -sf /bin/dash /bin/sh && pnpm run build
@@ -176,7 +192,7 @@ CMD ["--no-auth"]
 # docker build -f Dockerfile.standalone -t vibetunnel \
 #   --build-arg VT_FWD_COMMIT="$(git rev-parse HEAD)" .
 #
-# Released npm packages contain a Dockerfile pinned during packaging:
+# Released npm packages contain the runtime-only Dockerfile.npm variant:
 # docker build -f Dockerfile.standalone -t vibetunnel .
 #
 # Mount your code and run with ngrok:

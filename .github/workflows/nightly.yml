@@ -13,6 +13,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RUST_TOOLCHAIN: 1.97.0
 
 jobs:
   release-build-test:
@@ -47,10 +48,12 @@ jobs:
         version: 10.15.0
         dest: ~/pnpm-${{ github.run_id }}
 
-    - name: Setup Zig
-      uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
-      with:
-        version: 0.16.0
+    - name: Setup Rust
+      run: |
+        rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+        rustup default "$RUST_TOOLCHAIN"
+        rustup target add --toolchain "$RUST_TOOLCHAIN" \
+          aarch64-apple-darwin x86_64-apple-darwin
     
     - name: Cache Homebrew packages
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -137,6 +140,8 @@ jobs:
         done
     
     - name: Build web artifacts
+      env:
+        ARCHS: 'arm64 x86_64'
       run: |
         echo "Building web artifacts..."
         cd web

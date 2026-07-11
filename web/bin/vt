@@ -482,7 +482,7 @@ exec_with_fallback() {
     fi
 }
 
-# Function to run the forwarder (prefer native zig binary when present)
+# Function to run the forwarder (prefer native Rust binary when present)
 exec_fwd() {
     if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
         exec_with_fallback "$VIBETUNNEL_FWD_BIN" "$@"

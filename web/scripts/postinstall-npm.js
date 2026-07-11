@@ -232,7 +232,7 @@ for (const module of modules) {
   }
 }
 
-// Ensure the platform-specific zig forwarder is executable if present
+// Ensure the platform-specific Rust forwarder is executable if present
 const forwarderPath = path.join(
   __dirname,
   '..',
@@ -243,7 +243,7 @@ const forwarderPath = path.join(
 if (fs.existsSync(forwarderPath)) {
   try {
     fs.chmodSync(forwarderPath, 0o755);
-    console.log('✓ Zig forwarder is executable');
+    console.log('✓ Rust forwarder is executable');
   } catch (error) {
     console.warn(`⚠️  Failed to set executable bit on vibetunnel-fwd: ${error.message}`);
   }

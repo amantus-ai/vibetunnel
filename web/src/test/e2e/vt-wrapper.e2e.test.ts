@@ -50,7 +50,7 @@ function resolveForwarderPath(): string {
   }
 
   throw new Error(
-    `vibetunnel-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+    `vibetunnel-fwd not found. Run: node scripts/build-fwd-rust.js (cwd: ${process.cwd()})`
   );
 }
 
