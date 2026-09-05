@@ -181,6 +181,16 @@ The server runs as a standalone Node.js executable with embedded modules, provid
 
 ## Remote Access Options
 
+### Keep the execution machine available
+
+VibeTunnel exposes a terminal running on the selected machine. A working tunnel does not move that terminal's processes to your phone or keep its host running through system sleep. In HQ mode, check the machine that owns the session, not only the HQ server.
+
+The native Mac app's sleep-prevention service uses an idle-sleep assertion. MacBook lid-close sleep is a separate condition, so do not treat that setting as confirmation of closed-lid operation. For lid-closed use, choose a supported external-display setup or a compatible closed-lid solution; alternatively, leave the lid open with idle sleep managed.
+
+Before depending on a long job, leave the Mac powered and ventilated, confirm terminal access with the lid open, and check fresh command output from your phone after closing it. If the open-lid check fails, troubleshoot the session or connection first. Do not disable authentication to diagnose a sleep problem.
+
+An [Apple Silicon MacBook guide](https://clamshell.dev/guides/keep-claude-code-running-lid-closed#phone-check) provides a two-minute timestamp check and optional Clamshell setup. Clamshell is a separate paid app with a trial, not a VibeTunnel requirement.
+
 ### Option 1: Tailscale (Recommended)
 
 [Tailscale](https://tailscale.com) creates a secure peer-to-peer VPN network between your devices. It's the most secure option as traffic stays within your private network without exposing VibeTunnel to the public internet.
