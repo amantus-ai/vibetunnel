@@ -4,6 +4,15 @@
 
 VibeTunnel Server provides several authentication mechanisms to secure terminal access:
 
+### Diagnostic logs
+
+When authentication is enabled, reading server logs and metadata or clearing and
+flushing logs requires the same authentication as other protected API routes.
+Only `POST /api/logs/client` accepts log submissions before login, so the login
+screen can report client errors. Other methods and paths under `/api/logs` are
+not authentication exemptions. Explicit no-auth and local-bypass settings still
+control access as documented below.
+
 ### 1. Standard Authentication
 
 **System User Password** (default)

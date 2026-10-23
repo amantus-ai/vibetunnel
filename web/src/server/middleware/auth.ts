@@ -127,11 +127,11 @@ function getTailscaleUser(req: Request): TailscaleUser | null {
 
 export function createAuthMiddleware(config: AuthConfig) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Skip auth for auth endpoints, client logging, push notifications, and Tailscale status
+    // For log routes, only client submission is public; diagnostics require authentication.
     if (
       req.path.startsWith('/auth') ||
       req.path.startsWith('/api/auth') ||
-      req.path.startsWith('/logs') ||
+      (req.method === 'POST' && req.path === '/logs/client') ||
       req.path === '/sessions/tailscale/status' ||
       req.path.startsWith('/push')
     ) {

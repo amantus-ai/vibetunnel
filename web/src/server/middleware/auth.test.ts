@@ -394,15 +394,15 @@ describe('Auth Middleware', () => {
       expect(response2.status).toBe(200);
     });
 
-    it('should skip auth for logs endpoint', async () => {
+    it('should skip auth for client log submission', async () => {
       const middleware = createAuthMiddleware({
         authService: mockAuthService,
       });
 
       app.use(middleware);
-      app.post('/logs', (_req, res) => res.json({ success: true }));
+      app.post('/logs/client', (_req, res) => res.json({ success: true }));
 
-      const response = await request(app).post('/logs');
+      const response = await request(app).post('/logs/client');
       expect(response.status).toBe(200);
     });
 
