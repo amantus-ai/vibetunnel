@@ -12,6 +12,8 @@ struct GeneralSettingsView: View {
     private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
+    @AppStorage("appLanguage")
+    private var appLanguage = "system"
 
     @Environment(ConfigManager.self) private var configManager
     @Environment(SystemPermissionManager.self) private var permissionManager
@@ -87,6 +89,25 @@ struct GeneralSettingsView: View {
                         .font(.headline)
                 }
 
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("Language", selection: self.$appLanguage) {
+                            Text("System Default").tag("system")
+                            Text("English").tag("en")
+                            Text("简体中文").tag("zh-Hans")
+                        }
+                        .onChange(of: self.appLanguage) { _, newValue in
+                            self.applyLanguage(newValue)
+                        }
+                        Text("Restart VibeTunnel to apply the language change.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Language")
+                        .font(.headline)
+                }
+
                 // System Permissions section (moved from Security)
                 PermissionsSection(
                     hasAppleScriptPermission: self.hasAppleScriptPermission,
@@ -114,6 +135,29 @@ struct GeneralSettingsView: View {
             // Increment trigger to force computed property re-evaluation
             self.permissionUpdateTrigger += 1
         }
+    }
+
+    private func applyLanguage(_ value: String) {
+        let defaults = UserDefaults.standard
+        if value == "system" {
+            defaults.removeObject(forKey: "AppleLanguages")
+        } else {
+            defaults.set([value], forKey: "AppleLanguages")
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Restart Required"
+        alert.informativeText = "The language change takes effect after VibeTunnel restarts."
+        alert.addButton(withTitle: "Restart Now")
+        alert.addButton(withTitle: "Later")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let path = Bundle.main.bundlePath
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "sleep 1; open -n \"\(path)\""]
+        try? process.run()
+        NSApp.terminate(nil)
     }
 
     private var launchAtLoginBinding: Binding<Bool> {
