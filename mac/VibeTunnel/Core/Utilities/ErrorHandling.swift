@@ -14,11 +14,11 @@ struct ErrorAlertModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .alert(
-                self.title,
+                LocalizedStringKey(self.title),
                 isPresented: .constant(self.error != nil),
                 presenting: self.error)
             { _ in
-                Button(UIStrings.ok) {
+                Button(LocalizedStringKey(UIStrings.ok)) {
                     self.error = nil
                     self.onDismiss?()
                 }
@@ -101,7 +101,7 @@ struct ErrorToast: View {
                 .foregroundColor(.red)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(UIStrings.error)
+                Text(LocalizedStringKey(UIStrings.error))
                     .font(.headline)
 
                 Text(self.error.localizedDescription)

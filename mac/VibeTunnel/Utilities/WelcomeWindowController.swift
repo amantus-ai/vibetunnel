@@ -16,7 +16,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: Self.makeWelcomeView(mode: .full))
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = UIStrings.welcomeTitle
+        window.title = NSLocalizedString(UIStrings.welcomeTitle, comment: "Welcome window title")
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden

@@ -82,7 +82,7 @@ final class StatusBarController: NSObject {
             // Accessibility
             button.setAccessibilityTitle(self.getAppDisplayName())
             button.setAccessibilityRole(.button)
-            button.setAccessibilityHelp("Shows terminal sessions and server information")
+            button.setAccessibilityHelp(NSLocalizedString("Shows terminal sessions and server information", comment: "Status item accessibility help"))
 
             // Initialize the icon controller
             self.iconController = StatusBarIconController(button: button)
