@@ -79,7 +79,7 @@ This gives you the full VibeTunnel server with web UI, just without the macOS me
 
 ### Requirements
 
-**macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
+**macOS App**: The prebuilt app requires an Apple Silicon Mac (M1+). Intel Macs can build the native app from source (see [Building from Source](#building-from-source)) or use the npm package.
 
 **npm Package**: Works on Node.js 22.12 through 24.x, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252)).
 
@@ -724,7 +724,7 @@ npm publish
 ## Building from Source
 
 ### Prerequisites
-- macOS 14.0+ (Sonoma) on Apple Silicon (M1+)
+- macOS 14.0+ (Sonoma) on Apple Silicon (M1+) or Intel (x86_64)
 - Xcode 16.0+
 - Node.js 22.12 through 24.x
 - Rustup; `native/vt-fwd/rust-toolchain.toml` installs the pinned Rust toolchain for the native forwarder
@@ -766,6 +766,13 @@ pnpm run build
 # Build the macOS app
 cd ../mac
 ./scripts/build.sh --configuration Release
+
+# The script defaults to the host architecture. On Intel, pass --arch x86_64:
+# ./scripts/build.sh --configuration Debug --arch x86_64 --no-sign
+#
+# Prebuilt releases remain Apple Silicon-only. The embedded server and native
+# modules are compiled for the host architecture, so build on the same
+# architecture you intend to run.
 ```
 
 ### Custom Node.js Builds

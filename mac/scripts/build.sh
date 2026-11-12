@@ -10,12 +10,12 @@
 # build details including the IS_PRERELEASE_BUILD flag status.
 #
 # USAGE:
-#   ./scripts/build.sh [--configuration Debug|Release] [--no-sign] [--arch arm64]
+#   ./scripts/build.sh [--configuration Debug|Release] [--no-sign] [--arch arm64|x86_64]
 #
 # ARGUMENTS:
 #   --configuration <Debug|Release>  Build configuration (default: Release)
 #   --no-sign                        Disable code signing (not recommended)
-#   --arch <arm64>                   Architecture to build (default: arm64)
+#   --arch <arm64|x86_64>            Architecture to build (default: host architecture)
 #
 # ENVIRONMENT VARIABLES:
 #   IS_PRERELEASE_BUILD=YES|NO      Sets pre-release flag in Info.plist
@@ -34,10 +34,16 @@
 #   - xcbeautify (optional, for prettier output)
 #
 # EXAMPLES:
-#   ./scripts/build.sh                           # Release build (Apple Silicon)
-#   ./scripts/build.sh --configuration Debug     # Debug build (Apple Silicon)
+#   ./scripts/build.sh                           # Release build (host architecture)
+#   ./scripts/build.sh --configuration Debug     # Debug build (host architecture)
 #   ./scripts/build.sh --no-sign                 # Release build without signing (not recommended)
-#   IS_PRERELEASE_BUILD=YES ./scripts/build.sh   # Beta build (Apple Silicon)
+#   IS_PRERELEASE_BUILD=YES ./scripts/build.sh   # Beta build (host architecture)
+#
+# NOTE:
+#   The embedded server and native modules are built for the host
+#   architecture, so build for the architecture of the machine running the
+#   script. Prebuilt releases remain Apple Silicon-only; Intel Macs can build
+#   the app from source with --arch x86_64.
 #
 # =============================================================================
 
@@ -51,10 +57,10 @@ BUILD_DIR="$MAC_DIR/build"
 # Default values
 CONFIGURATION="Release"
 SIGN_APP=true
-ARCH="arm64"
+ARCH="$(uname -m)"
 
 usage() {
-    echo "Usage: $0 [--configuration Debug|Release] [--no-sign] [--arch arm64]"
+    echo "Usage: $0 [--configuration Debug|Release] [--no-sign] [--arch arm64|x86_64]"
 }
 
 require_arg() {
@@ -91,19 +97,21 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$ARCH" in
-    arm64)
+    arm64|x86_64)
         DESTINATION="platform=macOS,arch=$ARCH"
         ARCHS="$ARCH"
         ;;
     *)
-        echo "Unsupported architecture: $ARCH (the macOS app requires Apple Silicon)"
+        echo "Unsupported architecture: $ARCH (supported: arm64, x86_64)"
         usage
         exit 1
         ;;
 esac
 
-if [[ "$(uname -m)" != "arm64" ]]; then
-    echo "Apple Silicon host required to build matching embedded server resources"
+HOST_ARCH="$(uname -m)"
+if [[ "$HOST_ARCH" != "$ARCH" ]]; then
+    echo "Cannot build $ARCH on a $HOST_ARCH host: the embedded server and native modules are built for the host architecture."
+    echo "Run the script on a matching host (prebuilt releases are Apple Silicon-only; Intel Macs can build from source with --arch x86_64)."
     exit 1
 fi
 
